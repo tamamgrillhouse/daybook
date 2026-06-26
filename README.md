@@ -1,8 +1,4 @@
-# 👜 Ταμείο TAMAM — εφαρμογή κινητού (GitHub Pages)
+# daybook
 
-Δημόσιο «κέλυφος» της εφαρμογής Ταμείου. **Δεν περιέχει κανένα μυστικό** — ούτε token, ούτε
-κλειδί, ούτε δεδομένα. Τα μυστικά μπαίνουν στο κινητό τη στιγμή της σύνδεσης (QR/κωδικός) και
-ζουν μόνο στο κινητό (localStorage). Τα κρυπτογραφημένα δεδομένα ζουν στο ΙΔΙΩΤΙΚΟ repo «θυρίδα».
-
-⚙️ Παράγεται αυτόματα από `tools/build_cashbox_pwa.py` στο tamam-backend — μην επεξεργάζεσαι
-αρχεία εδώ με το χέρι.
+A small personal day-book (income / expenses), installable as a web app.
+Static shell only — contains no data and no credentials.

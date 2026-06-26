@@ -1,7 +1,7 @@
 {
-  "name": "Ταμείο — TAMAM",
+  "name": "Ταμείο",
   "short_name": "Ταμείο",
-  "description": "Το ψηφιακό βιβλίο μετρητών του TAMAM",
+  "description": "Ψηφιακό βιβλίο εσόδων-εξόδων",
   "lang": "el",
   "start_url": "./",
   "scope": "./",
