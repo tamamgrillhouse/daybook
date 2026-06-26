@@ -12,7 +12,7 @@
   var BASE = (CFG.apiBase != null) ? CFG.apiBase : '/cashbox';
   var API_STATE = BASE + '/api/state', API_OPS = BASE + '/api/ops';
   var SW_PATH = CFG.swPath || '/cashbox/sw.js', SW_SCOPE = CFG.swScope || '/cashbox';
-  var LS_STATE = 'cb_state', LS_QUEUE = 'cb_queue', LS_EYE = 'cb_bal_shown';
+  var LS_STATE = 'cb_state', LS_QUEUE = 'cb_queue', LS_EYE = 'cb_bal_shown', LS_LASTSYNC = 'cb_last_sync';
 
   function load(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
   function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
@@ -118,13 +118,27 @@
       + '<div class="r"><span>💸 Πληρωμές εβδομάδας</span><b>' + (t.out ? ('−' + euro(t.out)) : '—') + '</b></div>'
       + '<div class="r"><span>👜 Υπόλοιπο ταμείου</span><b>' + euro(state.balance) + '</b></div>';
   }
+  function hhmm(ms) {
+    if (!ms) return '';
+    var d = new Date(Number(ms));
+    return pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
   function renderSync() {
-    var el = byId('m-sync'); if (!el) return;
+    var el = byId('m-sync'), line = byId('m-syncline');
     var mailbox = (window.CBSync && CBSync.configured());
-    if (!navigator.onLine) { el.textContent = '📴'; el.title = 'Χωρίς σύνδεση — θα συγχρονιστεί μόλις βρεις δίκτυο'; }
-    else if (queue.length && mailbox) { el.textContent = '📮'; el.title = queue.length + ' κινήσεις στη θυρίδα — περιμένουν τον υπολογιστή'; }
-    else if (queue.length) { el.textContent = '⏳'; el.title = queue.length + ' αλλαγές περιμένουν συγχρονισμό'; }
-    else { el.textContent = '✓'; el.title = 'Συγχρονισμένο'; }
+    var emo, short, full, warn = false;
+    if (!navigator.onLine) {
+      emo = '📴'; warn = true; short = 'Χωρίς δίκτυο'; full = 'Χωρίς δίκτυο — θα συγχρονιστεί μόλις βρεις internet';
+    } else if (queue.length && mailbox) {
+      emo = '📮'; warn = true; short = queue.length + ' στη θυρίδα'; full = queue.length + ' κινήσεις στη θυρίδα — περιμένουν τον υπολογιστή';
+    } else if (queue.length) {
+      emo = '⏳'; warn = true; short = queue.length + ' σε αναμονή'; full = queue.length + ' αλλαγές περιμένουν συγχρονισμό';
+    } else {
+      emo = '✓'; var t = hhmm(load(LS_LASTSYNC, 0));
+      short = 'Όλα συγχρονισμένα'; full = 'Όλα συγχρονισμένα' + (t ? ' · τελευταίος συγχρονισμός ' + t : '');
+    }
+    if (el) { el.textContent = emo; el.title = full; }
+    if (line) { line.textContent = emo + ' ' + full; line.className = 'm-syncline' + (warn ? ' warn' : ''); }
   }
   function renderAll() { renderBalance(); renderFeed(); renderSelects(); renderCount(); renderSync(); }
 
@@ -134,7 +148,8 @@
   function closeSheets() { ov.classList.remove('on'); var l = document.querySelectorAll('.m-sheet.on'); for (var i = 0; i < l.length; i++) l[i].classList.remove('on'); document.body.style.overflow = ''; }
 
   // ── actions ─────────────────────────────────────────────────────────────────
-  function enqueue(op) { queue.push(op); save(LS_QUEUE, queue); }
+  // κάθε γράμμα κουβαλά «πότε έγινε στο κινητό» (ts) → ο υπολογιστής κρατά την πιο πρόσφατη αλλαγή
+  function enqueue(op) { if (op.ts == null) op.ts = Date.now(); queue.push(op); save(LS_QUEUE, queue); }
 
   function addPay() {
     var amt = parseAmt(byId('pay-amount').value); if (!(amt > 0)) { closeSheets(); return; }
@@ -237,6 +252,7 @@
     }
     // Υιοθέτησε το «επίσημο» state ΜΟΝΟ όταν δεν περιμένει τίποτα — αλλιώς θα έκρυβε
     // τις τοπικές κινήσεις που ο υπολογιστής δεν έχει δει ακόμα (single-user → ασφαλές).
+    if (!queue.length) save(LS_LASTSYNC, Date.now());   // άδεια ουρά = ο υπολογιστής τα έχει όλα
     if (authState && authState.balance != null && !queue.length) {
       state = authState; save(LS_STATE, state);
     }

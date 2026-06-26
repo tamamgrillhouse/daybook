@@ -35,6 +35,9 @@ body{font-family:'Segoe UI',system-ui,Roboto,Arial,sans-serif;background:var(--b
 .m-eye{background:rgba(255,255,255,.2);border:0;color:#fff;width:40px;height:40px;border-radius:12px;
   font-size:18px;cursor:pointer;flex:0 0 auto;display:flex;align-items:center;justify-content:center}
 .m-sub{font-size:12px;opacity:.9;margin-top:4px;letter-spacing:.3px}
+.m-syncline{font-size:12px;font-weight:700;margin-top:9px;padding:5px 11px;border-radius:999px;
+  background:rgba(255,255,255,.18);display:inline-flex;align-items:center;gap:6px}
+.m-syncline.warn{background:rgba(255,255,255,.30)}
 
 .m-body{padding:16px 14px;flex:1 1 auto;display:flex;flex-direction:column}
 
