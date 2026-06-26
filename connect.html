@@ -19,9 +19,9 @@
 <body>
   <div class="c-wrap">
     <a class="c-back" href="./">← Πίσω στο ταμείο</a>
-    <div class="c-card">
+    <div id="c-status" class="c-st c-no">Έλεγχος…</div>
+    <div class="c-card" id="c-card-connect">
       <p class="c-h">📮 Σύνδεση με τη θυρίδα</p>
-      <div id="c-status" class="c-st c-no">Έλεγχος…</div>
       <div class="m-note">Σκάναρε το QR από τον υπολογιστή <b>(Ρυθμίσεις → 📮)</b>, ή επικόλλησε εδώ τον κωδικό
       που αρχίζει με <b>TS1.</b></div>
       <div class="m-fld" style="margin-top:10px">
@@ -31,7 +31,7 @@
       <button type="button" class="btn-primary" id="c-save" style="width:100%">Σύνδεση</button>
       <div id="c-msg" class="c-msg"></div>
     </div>
-    <div class="c-card">
+    <div class="c-card" id="c-card-manage">
       <p class="c-h">🔌 Έλεγχος & αποσύνδεση</p>
       <button type="button" class="btn-secondary" id="c-test" style="width:100%;margin-bottom:10px">🔌 Δοκιμή σύνδεσης</button>
       <button type="button" class="btn-danger" id="c-clear" style="width:100%">Αποσύνδεση κινητού</button>
@@ -45,8 +45,13 @@
     function st(){
       var box=document.getElementById('c-status');
       var c=window.CBSync&&CBSync.getCreds();
-      if(c){ box.className='c-st c-ok'; box.textContent='✅ Συνδεδεμένο με τη θυρίδα: '+c.repo; }
+      var connected=!!c;
+      if(connected){ box.className='c-st c-ok'; box.textContent='✅ Συνδεδεμένο με τη θυρίδα: '+c.repo; }
       else{ box.className='c-st c-no'; box.textContent='⚠️ Δεν είναι συνδεδεμένο ακόμα.'; }
+      // Συνδεδεμένος → μόνο Δοκιμή/Αποσύνδεση· μη συνδεδεμένος → μόνο το κουτί Σύνδεσης.
+      var cc=document.getElementById('c-card-connect'), cm=document.getElementById('c-card-manage');
+      if(cc) cc.style.display=connected?'none':'';
+      if(cm) cm.style.display=connected?'':'none';
     }
     document.getElementById('c-save').addEventListener('click',function(){
       var msg=document.getElementById('c-msg');
