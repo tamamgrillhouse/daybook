@@ -1,7 +1,7 @@
 {
   "name": "Ταμείο",
   "short_name": "Ταμείο",
-  "description": "Ψηφιακό βιβλίο εσόδων-εξόδων",
+  "description": "Προσωπική εφαρμογή",
   "lang": "el",
   "start_url": "./",
   "scope": "./",
