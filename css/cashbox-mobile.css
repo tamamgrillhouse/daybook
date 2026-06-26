@@ -9,6 +9,8 @@
 body{font-family:'Segoe UI',system-ui,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45;
   max-width:520px;margin:0 auto;min-height:100vh;min-height:100dvh;padding-bottom:30px;
   display:flex;flex-direction:column}
+/* καμουφλάζ: η πραγματική εφαρμογή & η ουδέτερη οθόνη «Σημειώσεις» γεμίζουν το ύψος */
+#app-real,#app-decoy{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
 
 /* shared buttons (also used by confirm.js popup) */
 .btn-primary{background:var(--orange);color:#fff;border:0;font:inherit;font-weight:800;border-radius:12px;

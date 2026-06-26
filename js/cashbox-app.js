@@ -315,7 +315,6 @@
 
   // ── wiring ──────────────────────────────────────────────────────────────────
   function setup() {
-    handleConnectHash();
     ov = byId('m-ov');
     ov.addEventListener('click', closeSheets);
     var closers = document.querySelectorAll('[data-close]'); for (var i = 0; i < closers.length; i++) closers[i].addEventListener('click', closeSheets);
@@ -343,11 +342,46 @@
     // άνοιξε & απορρόφησε τα γράμματα της θυρίδας» χωρίς να χρειαστεί άνοιγμα/κλείσιμο).
     setInterval(function () { if (navigator.onLine && queue.length) trySync(); }, 60000);
 
+  }
+
+  // ── ΚΑΜΟΥΦΛΑΖ: δείξε την πραγματική εφαρμογή ΜΟΝΟ με το κλειδί (ή στον τοπικό server) ──
+  // Όποιος ανοίξει τη δημόσια διεύθυνση χωρίς το κλειδί βλέπει μια ουδέτερη, λειτουργική
+  // οθόνη «Σημειώσεις» (κρατάει τις σημειώσεις του τοπικά) → δεν υποψιάζεται τίποτα.
+  function decoySetup() {
+    var LSN = 'nx_notes';
+    var list = byId('nx-list'), input = byId('nx-input'), addb = byId('nx-add'), emptyEl = byId('nx-empty');
+    if (!list) return;
+    var notes; try { notes = JSON.parse(localStorage.getItem(LSN)) || []; } catch (e) { notes = []; }
+    function persist() { try { localStorage.setItem(LSN, JSON.stringify(notes)); } catch (e) {} }
+    function render() {
+      list.innerHTML = '';
+      if (!notes.length) { emptyEl.style.display = ''; return; }
+      emptyEl.style.display = 'none';
+      notes.forEach(function (n, i) {
+        var d = document.createElement('div'); d.className = 'm-it';
+        d.innerHTML = '<span class="emo">📝</span><div class="tx"><div class="t1">' + esc(n) + '</div></div>'
+          + '<div class="acts"><button type="button" class="m-del">🗑</button></div>';
+        d.querySelector('.m-del').addEventListener('click', function () { notes.splice(i, 1); persist(); render(); });
+        list.appendChild(d);
+      });
+    }
+    addb.addEventListener('click', function () { var v = (input.value || '').trim(); if (!v) return; notes.unshift(v); persist(); input.value = ''; render(); });
+    render();
+  }
+
+  function show(el, on) { if (el) el.style.display = on ? '' : 'none'; }
+
+  function boot() {
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () { navigator.serviceWorker.register(SW_PATH, { scope: SW_SCOPE }).catch(function () {}); });
     }
+    handleConnectHash();                                   // QR/σύνδεσμος μπορεί να βάλει το κλειδί
+    var hasKey = !!(window.CBSync && CBSync.getCreds && CBSync.getCreds());
+    var showReal = hasKey || !CFG.noLocal;                 // τοπικός server = έμπιστος· Pages θέλει κλειδί
+    if (showReal) { show(byId('app-decoy'), false); show(byId('app-real'), true); setup(); }
+    else { show(byId('app-real'), false); show(byId('app-decoy'), true); decoySetup(); }
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
-  else setup();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
 })();
