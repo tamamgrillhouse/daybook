@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>👜 Το ταμείο μου</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#e8722c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ταμείο">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="stylesheet" href="./css/cashbox-mobile.css">
+</head>
+<body>
+
+  <!-- ░░ Top bar ░░ -->
+  <header class="m-top">
+    <div class="m-top-row">
+      <div class="m-title">👜 Το ταμείο μου</div>
+      <div class="m-tools">
+        <span class="m-sync" id="m-sync" title="Κατάσταση συγχρονισμού"></span>
+        <a href="./connect.html" title="Σύνδεση θυρίδας">⚙️</a>
+      </div>
+    </div>
+    <div class="m-bal-row">
+      <span class="m-bal" id="m-bal" data-real="">••••• €</span>
+      <button class="m-eye" id="m-eye" type="button" aria-label="Εμφάνιση / απόκρυψη υπολοίπου">👁</button>
+    </div>
+    <div class="m-sub">ΥΠΟΛΟΙΠΟ ΜΕΤΡΗΤΩΝ · ενημερώνεται μόνο του σε κάθε κίνηση</div>
+  </header>
+
+  <main class="m-body">
+    <div class="m-tiles">
+      <button class="m-tile pay"   data-sheet="s-pay"><span class="ic">🧾</span><span>Πληρωμή / Έξοδο</span></button>
+      <button class="m-tile draw"  data-sheet="s-draw"><span class="ic">💸</span><span>Πήρα μετρητά</span></button>
+      <button class="m-tile count" data-sheet="s-count"><span class="ic">📋</span><span>Κλείσιμο / Μέτρησα εβδομάδας</span></button>
+    </div>
+
+    <div class="m-sec">Πρόσφατες κινήσεις</div>
+    <div class="m-feed" id="m-feed"></div>
+    <div class="m-empty" id="m-empty" style="display:none">Καμία κίνηση ακόμα. Πάτα «🧾 Πληρωμή» ή «💸 Πήρα μετρητά» για να ξεκινήσεις.</div>
+    <p class="m-foot" id="m-foot" style="display:none">✏️ διόρθωση / 🗑 σβήσιμο → το υπόλοιπο ξαναϋπολογίζεται μόνο του.</p>
+  </main>
+
+  <!-- ░░ Overlay + sheets ░░ -->
+  <div class="m-ov" id="m-ov"></div>
+
+  <!-- 🧾 Πληρωμή / Έξοδο -->
+  <div class="m-sheet" id="s-pay">
+    <div class="m-grip"></div>
+    <div class="m-sheet-h"><span>🧾 Πληρωμή / Έξοδο</span><button class="x" data-close>✕</button></div>
+    <div class="m-fld"><label>Από ποιο ταμείο μέρας;</label><select id="pay-day"></select>
+      <div class="m-hint">Προ-διαλεγμένη η <b>προηγούμενη ανοιχτή μέρα</b> · το ρεπό παρακάμπτεται.</div></div>
+    <div class="m-fld"><label>Κατηγορία</label><select id="pay-cat"></select></div>
+    <div class="m-fld"><label>Ποσό (€)</label><input id="pay-amount" inputmode="decimal" placeholder="0,00"></div>
+    <div class="m-fld"><label>Είναι της επιχείρησης;</label>
+      <div class="m-tog">
+        <label class="g"><input type="radio" name="pay-biz" value="1" checked>🟢 Επιχείρηση</label>
+        <label class="p"><input type="radio" name="pay-biz" value="0">⚪ Προσωπικό</label>
+      </div>
+    </div>
+    <div class="m-fld"><label>Σημείωση (προαιρετικό)</label><input id="pay-desc" placeholder="π.χ. καθαρίστρια"></div>
+    <button type="button" class="btn-primary" id="pay-save" style="width:100%">Αποθήκευση</button>
+  </div>
+
+  <!-- 💸 Πήρα μετρητά -->
+  <div class="m-sheet" id="s-draw">
+    <div class="m-grip"></div>
+    <div class="m-sheet-h"><span>💸 Πήρα μετρητά (για μένα)</span><button class="x" data-close>✕</button></div>
+    <div class="m-note">Γενική ανάληψη από το <b>σύνολο</b>, με <b>σημερινή</b> ημερομηνία — χωρίς επιλογέα μέρας.</div>
+    <div class="m-fld"><label>Ποσό (€)</label><input id="draw-amount" inputmode="decimal" placeholder="0,00"></div>
+    <div class="m-fld"><label>Είναι της επιχείρησης;</label>
+      <div class="m-tog">
+        <label class="p"><input type="radio" name="draw-biz" value="0" checked>⚪ Προσωπικό</label>
+        <label class="g"><input type="radio" name="draw-biz" value="1">🟢 Επιχείρηση</label>
+      </div>
+    </div>
+    <div class="m-fld"><label>Σημείωση (προαιρετικό)</label><input id="draw-desc" placeholder="π.χ. ψώνια σπιτιού"></div>
+    <button type="button" class="btn-primary" id="draw-save" style="width:100%">Αποθήκευση</button>
+  </div>
+
+  <!-- 📋 Κλείσιμο / Μέτρησα -->
+  <div class="m-sheet" id="s-count">
+    <div class="m-grip"></div>
+    <div class="m-sheet-h"><span>📋 Κλείσιμο εβδομάδας</span><button class="x" data-close>✕</button></div>
+    <div class="m-note">Βάλε <b>ανά μέρα</b> πόσα μετρητά μάζεψες. Δίπλα τα έξοδα της μέρας, για να ξέρεις πού ήταν.</div>
+    <div class="m-cnt" id="count-rows"></div>
+    <div class="m-sum" id="count-sum"></div>
+    <button type="button" class="btn-primary" id="count-save" style="width:100%">Αποθήκευση εβδομάδας</button>
+  </div>
+
+  <!-- ✏️ Διόρθωση κίνησης -->
+  <div class="m-sheet" id="s-edit">
+    <div class="m-grip"></div>
+    <div class="m-sheet-h"><span>✏️ Διόρθωση κίνησης</span><button class="x" data-close>✕</button></div>
+    <div class="m-fld" id="edit-day-wrap"><label>Από ποιο ταμείο μέρας;</label><select id="edit-day"></select></div>
+    <div class="m-fld"><label>Κατηγορία</label><select id="edit-cat"></select></div>
+    <div class="m-fld"><label>Ποσό (€)</label><input id="edit-amount" inputmode="decimal"></div>
+    <div class="m-fld"><label>Είναι της επιχείρησης;</label>
+      <div class="m-tog">
+        <label class="g"><input type="radio" name="edit-biz" value="1" id="edit-biz1">🟢 Επιχείρηση</label>
+        <label class="p"><input type="radio" name="edit-biz" value="0" id="edit-biz0">⚪ Προσωπικό</label>
+      </div>
+    </div>
+    <div class="m-fld"><label>Σημείωση</label><input id="edit-desc"></div>
+    <button type="button" class="btn-primary" id="edit-save" style="width:100%">Αποθήκευση</button>
+  </div>
+
+  <script id="cb-initial" type="application/json">{"balance": 0, "settings": {}, "week": {"rows": [], "totals": {}}, "picker": {"days": [], "default": ""}, "categories": [], "recent": [], "closed_days": [], "stats": {}}</script>
+  <script>window.CB_CONFIG={noLocal:true,swPath:'./sw.js',swScope:'./'};</script>
+  <script src="./js/confirm.js"></script>
+  <script src="./js/cashbox-sync.js"></script>
+  <script src="./js/cashbox-app.js"></script>
+</body>
+</html>

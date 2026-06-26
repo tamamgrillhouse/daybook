@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>📮 Σύνδεση ταμείου</title>
+<link rel="stylesheet" href="./css/cashbox-mobile.css">
+<style>
+  .c-wrap{max-width:520px;margin:0 auto;padding:16px}
+  .c-card{background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  .c-h{font-weight:700;font-size:17px;margin:0 0 8px}
+  .c-st{font-size:15px;padding:10px 12px;border-radius:10px;margin-bottom:10px}
+  .c-ok{background:#e7f6ec;color:#1c7a3e}.c-no{background:#fdeceb;color:#b3261e}
+  textarea{width:100%;min-height:90px;border:1px solid #d4d7dc;border-radius:10px;padding:10px;font-size:14px;box-sizing:border-box}
+  .c-msg{font-size:14px;margin-top:8px;min-height:18px}
+  a.c-back{display:inline-block;margin-bottom:12px;color:#e8722c;font-weight:600;text-decoration:none}
+</style>
+</head>
+<body>
+  <div class="c-wrap">
+    <a class="c-back" href="./">← Πίσω στο ταμείο</a>
+    <div class="c-card">
+      <p class="c-h">📮 Σύνδεση με τη θυρίδα</p>
+      <div id="c-status" class="c-st c-no">Έλεγχος…</div>
+      <div class="m-note">Σκάναρε το QR από τον υπολογιστή <b>(Ρυθμίσεις → 📮)</b>, ή επικόλλησε εδώ τον κωδικό
+      που αρχίζει με <b>TS1.</b></div>
+      <div class="m-fld" style="margin-top:10px">
+        <label>Κωδικός σύνδεσης</label>
+        <textarea id="c-code" placeholder="TS1...."></textarea>
+      </div>
+      <button type="button" class="btn-primary" id="c-save" style="width:100%">Σύνδεση</button>
+      <div id="c-msg" class="c-msg"></div>
+    </div>
+    <div class="c-card">
+      <p class="c-h">🔌 Έλεγχος & αποσύνδεση</p>
+      <button type="button" class="btn-secondary" id="c-test" style="width:100%;margin-bottom:10px">🔌 Δοκιμή σύνδεσης</button>
+      <button type="button" class="btn-danger" id="c-clear" style="width:100%">Αποσύνδεση κινητού</button>
+      <div id="c-msg2" class="c-msg"></div>
+    </div>
+  </div>
+  <script src="./js/confirm.js"></script>
+  <script src="./js/cashbox-sync.js"></script>
+  <script>
+  (function(){
+    function st(){
+      var box=document.getElementById('c-status');
+      var c=window.CBSync&&CBSync.getCreds();
+      if(c){ box.className='c-st c-ok'; box.textContent='✅ Συνδεδεμένο με τη θυρίδα: '+c.repo; }
+      else{ box.className='c-st c-no'; box.textContent='⚠️ Δεν είναι συνδεδεμένο ακόμα.'; }
+    }
+    document.getElementById('c-save').addEventListener('click',function(){
+      var msg=document.getElementById('c-msg');
+      var creds=window.CBSync&&CBSync.parsePayload((document.getElementById('c-code').value||'').trim());
+      if(!creds){ msg.style.color='#b3261e'; msg.textContent='❌ Ο κωδικός δεν είναι σωστός.'; return; }
+      CBSync.setCreds(creds); msg.style.color='#1c7a3e';
+      msg.textContent='✅ Συνδέθηκε! Τώρα το ταμείο δουλεύει και με κλειστό υπολογιστή.'; st();
+    });
+    document.getElementById('c-test').addEventListener('click',function(){
+      var m=document.getElementById('c-msg2'); m.style.color='#555'; m.textContent='Δοκιμή…';
+      if(!(window.CBSync&&CBSync.configured())){ m.style.color='#b3261e'; m.textContent='⚠️ Σύνδεσε πρώτα το κινητό.'; return; }
+      CBSync.testConnection().then(function(r){
+        if(r&&r.ok){ m.style.color='#1c7a3e'; m.textContent='✅ Όλα καλά — η θυρίδα απαντά.'; }
+        else{ m.style.color='#b3261e'; m.textContent='❌ Πρόβλημα: '+((r&&r.error)||'άγνωστο'); }
+      }).catch(function(){ m.style.color='#b3261e'; m.textContent='❌ Δεν μπόρεσα να συνδεθώ.'; });
+    });
+    document.getElementById('c-clear').addEventListener('click',function(){
+      window.showConfirm('Αποσύνδεση του κινητού από τη θυρίδα;',function(){
+        CBSync.clearCreds(); document.getElementById('c-msg2').textContent=''; st();
+      },null,{title:'Αποσύνδεση',yesLabel:'Αποσύνδεση'});
+    });
+    st();
+  })();
+  </script>
+</body>
+</html>
