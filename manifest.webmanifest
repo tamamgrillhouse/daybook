@@ -1,6 +1,6 @@
 {
-  "name": "Ταμείο",
-  "short_name": "Ταμείο",
+  "name": "Σημειώσεις",
+  "short_name": "Σημειώσεις",
   "description": "Προσωπική εφαρμογή",
   "lang": "el",
   "start_url": "./",
