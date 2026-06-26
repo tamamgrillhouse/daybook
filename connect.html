@@ -59,8 +59,9 @@
       var m=document.getElementById('c-msg2'); m.style.color='#555'; m.textContent='Δοκιμή…';
       if(!(window.CBSync&&CBSync.configured())){ m.style.color='#b3261e'; m.textContent='⚠️ Σύνδεσε πρώτα το κινητό.'; return; }
       CBSync.testConnection().then(function(r){
-        if(r&&r.ok){ m.style.color='#1c7a3e'; m.textContent='✅ Όλα καλά — η θυρίδα απαντά.'; }
-        else{ m.style.color='#b3261e'; m.textContent='❌ Πρόβλημα: '+((r&&r.error)||'άγνωστο'); }
+        if(r&&r.ok){ m.style.color='#1c7a3e'; m.textContent='✅ Όλα καλά — η θυρίδα απαντά.'; return; }
+        var msgs={not_configured:'Λείπουν κλειδιά.',no_crypto:'Το κινητό χρειάζεται https για κρυπτογράφηση.',bad_key:'Το κλειδί δεν είναι έγκυρο.',auth:'Το token είναι λάθος ή χωρίς δικαίωμα «Contents».',repo_not_found:'Δεν βρέθηκε η θυρίδα — έλεγξε το owner/repo.',offline:'Χωρίς σύνδεση / αποκλεισμός αυτή τη στιγμή.'};
+        m.style.color='#b3261e'; m.textContent='❌ Πρόβλημα: '+((r&&(msgs[r.reason]||r.reason))||'άγνωστο');
       }).catch(function(){ m.style.color='#b3261e'; m.textContent='❌ Δεν μπόρεσα να συνδεθώ.'; });
     });
     document.getElementById('c-clear').addEventListener('click',function(){
