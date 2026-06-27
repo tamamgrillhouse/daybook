@@ -455,8 +455,9 @@
     var showReal = hasKey || !CFG.noLocal;                 // τοπικός server = έμπιστος· Pages θέλει κλειδί
     if (showReal) {
       show(byId('app-decoy'), false); show(byId('app-real'), true);
-      // 🔒 Κλείδωμα: δείξε την κλειδαριά ΠΡΙΝ φανεί οτιδήποτε· ξανακλείδωμα όταν επιστρέφεις από παρασκήνιο.
-      if (window.CBLock && CBLock.isEnabled()) CBLock.lockNow();
+      // 🔒 Κλείδωμα: δείξε την κλειδαριά ΠΡΙΝ φανεί οτιδήποτε — αλλά ΜΟΝΟ αν χρειάζεται
+      // (φρέσκο άνοιγμα ή πέρασε το περιθώριο χρόνου)· μετά «οπλίζει» το ξανακλείδωμα.
+      if (window.CBLock) CBLock.lockIfNeeded();
       setup();
       if (window.CBLock) CBLock.arm();
     }

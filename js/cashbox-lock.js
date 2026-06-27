@@ -12,6 +12,9 @@
   'use strict';
   var LS_PIN = 'cb_lock_pin';   // {salt, hash}  (παρουσία = κλείδωμα ενεργό)
   var LS_FP = 'cb_lock_fp';     // {credId}      (παρουσία = δαχτυλικό ενεργό)
+  var LS_GRACE = 'cb_lock_grace'; // λεπτά «περιθωρίου» πριν ξανακλειδώσει (0 = άμεσα)· default 2
+  var LS_SEEN = 'cb_lock_seen';   // πότε ήταν τελευταία ενεργή η εφαρμογή (epoch-ms)
+  var DEFAULT_GRACE = 2;
   var PIN_LEN = 6;
   var subtle = (window.crypto && window.crypto.subtle) || null;
   var CFG = window.CB_CONFIG || {};
@@ -37,7 +40,7 @@
   function setPin(pin) {
     if (!subtle) return Promise.reject(new Error('no_crypto'));
     var salt = bytesToB64url(rand(16));
-    return sha256hex(salt + ':' + pin).then(function (h) { jsave(LS_PIN, { salt: salt, hash: h }); return true; });
+    return sha256hex(salt + ':' + pin).then(function (h) { jsave(LS_PIN, { salt: salt, hash: h }); stampSeen(); return true; });
   }
   function verifyPin(pin) {
     var p = jload(LS_PIN); if (!p || !subtle) return Promise.resolve(false);
@@ -51,6 +54,15 @@
   function clearPin() { try { localStorage.removeItem(LS_PIN); } catch (e) {} clearFp(); }
   function clearFp() { try { localStorage.removeItem(LS_FP); } catch (e) {} }
   function clearAll() { clearPin(); }                        // reset = σβήνει PIN + δαχτυλικό
+
+  // ── περιθώριο χρόνου (πότε ξανακλειδώνει) ──────────────────────────────────────
+  // Ξανακλειδώνει ΜΟΝΟ αν λείψεις πάνω από «grace» λεπτά (ή στο φρέσκο άνοιγμα).
+  // Γρήγορη εναλλαγή εφαρμογής & επιστροφή → δεν ενοχλεί. grace=0 → άμεσα (κάθε φορά).
+  function getGrace() { var v = parseInt(localStorage.getItem(LS_GRACE), 10); return isNaN(v) ? DEFAULT_GRACE : Math.max(0, v); }
+  function setGrace(min) { try { localStorage.setItem(LS_GRACE, String(Math.max(0, parseInt(min, 10) || 0))); } catch (e) {} }
+  function stampSeen() { try { localStorage.setItem(LS_SEEN, String(Date.now())); } catch (e) {} }
+  function getSeen() { var v = parseInt(localStorage.getItem(LS_SEEN), 10); return isNaN(v) ? 0 : v; }
+  function shouldLock() { return isEnabled() && (Date.now() - getSeen()) > getGrace() * 60000; }
 
   // ── δαχτυλικό (WebAuthn) ───────────────────────────────────────────────────────
   function fpSupported() { return !!(window.PublicKeyCredential && navigator.credentials && navigator.credentials.create); }
@@ -234,6 +246,7 @@
     ovEl.classList.remove('on');
     document.body.style.overflow = '';
     var cb = onPass; onPass = null; resetEntry();
+    stampSeen();                          // ξεκλείδωσε τώρα → ξεκινά το περιθώριο από εδώ
     if (cb) try { cb(); } catch (e) {}
   }
 
@@ -270,26 +283,31 @@
     if (fpOn() && fpSupported()) setTimeout(startFp, 250);   // αυτόματο δαχτυλικό
   }
   function lockNow() { guard(null); }
+  function isOpen() { return !!(ovEl && ovEl.classList.contains('on')); }
+  // Κλείδωσε ΜΟΝΟ αν χρειάζεται (φρέσκο άνοιγμα ή πέρασε το περιθώριο)· αλλιώς απλώς «ενεργός τώρα».
+  function lockIfNeeded() { if (shouldLock()) lockNow(); else if (isEnabled()) stampSeen(); }
 
-  // Ξανακλείδωμα όταν επιστρέφεις στην εφαρμογή αφού την άφησες στην άκρη.
+  // Ξανακλείδωμα όταν επιστρέφεις στην εφαρμογή — ΜΟΝΟ αν έλειψες πάνω από το περιθώριο.
   function arm() {
     if (armed) return; armed = true;
     document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState === 'hidden') { wasHidden = true; }
+      if (document.visibilityState === 'hidden') { wasHidden = true; stampSeen(); }   // κατέγραψε πότε έφυγες
       else if (document.visibilityState === 'visible' && wasHidden) {
         wasHidden = false;
-        if (isEnabled() && !(ovEl && ovEl.classList.contains('on'))) lockNow();
+        if (shouldLock() && !isOpen()) lockNow();
       }
     });
+    window.addEventListener('pagehide', function () { stampSeen(); });
     // bfcache / επαναφορά σελίδας
-    window.addEventListener('pageshow', function (e) { if (e.persisted && isEnabled() && !(ovEl && ovEl.classList.contains('on'))) lockNow(); });
+    window.addEventListener('pageshow', function (e) { if (e.persisted && shouldLock() && !isOpen()) lockNow(); });
   }
 
   window.CBLock = {
     isEnabled: isEnabled, hasPin: hasPin, fpOn: fpOn,
     setPin: setPin, verifyPin: verifyPin, clearPin: clearPin, clearFp: clearFp, clearAll: clearAll,
+    getGrace: getGrace, setGrace: setGrace,
     fpSupported: fpSupported, fpPlatformAvailable: fpPlatformAvailable, registerFp: registerFp,
-    guard: guard, lockNow: lockNow, arm: arm,
+    guard: guard, lockNow: lockNow, lockIfNeeded: lockIfNeeded, arm: arm,
     hasCrypto: function () { return !!subtle; },
     // Κάρτα ρυθμίσεων (μία πηγή): mountSettings(el) → φτιάχνει & συνδέει το UI «Κλείδωμα εφαρμογής».
     mountSettings: mountSettings
@@ -305,6 +323,7 @@
       + '<div class="m-note">Όταν είναι ενεργό, η εφαρμογή ζητάει κωδικό (ή δαχτυλικό) <b>κάθε φορά</b> που την ανοίγεις — και ξανακλειδώνει όταν την αφήνεις στην άκρη.</div>'
       + '<div id="cbl-set-pinrow"></div>'
       + '<div id="cbl-set-pinbox" style="display:none"></div>'
+      + '<div id="cbl-set-gracerow"></div>'
       + '<div id="cbl-set-fprow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-top:1px solid #e6e8ec;margin-top:6px"></div>'
       + '<div id="cbl-set-msg" class="m-note" style="display:none;margin-top:10px"></div>'
       + '</div>';
@@ -347,7 +366,7 @@
         if (!ok) { note('Ο τωρινός κωδικός είναι λάθος.'); return; }
         setPin(n1).then(function () {
           el.querySelector('#cbl-set-pinbox').style.display = 'none';
-          renderPinRow(); renderFpRow();
+          renderPinRow(); renderGraceRow(); renderFpRow();
           note('✓ Ο κωδικός αποθηκεύτηκε. Το κλείδωμα είναι ενεργό.', true);
         });
       });
@@ -362,11 +381,27 @@
         el.querySelector('#cbl-rmgo').addEventListener('click', function () {
           verifyPin((el.querySelector('#cbl-rmcur').value || '').trim()).then(function (ok) {
             if (!ok) { note('Λάθος κωδικός — δεν έγινε κατάργηση.'); return; }
-            clearAll(); box.style.display = 'none'; renderPinRow(); renderFpRow();
+            clearAll(); box.style.display = 'none'; renderPinRow(); renderGraceRow(); renderFpRow();
             note('Το κλείδωμα καταργήθηκε.', true);
           });
         });
       }, null, { title: 'Κατάργηση κλειδώματος', yesLabel: 'Συνέχεια' });
+    }
+
+    function renderGraceRow() {
+      var row = el.querySelector('#cbl-set-gracerow');
+      if (!hasPin()) { row.innerHTML = ''; return; }       // χωρίς PIN δεν έχει νόημα
+      var g = getGrace();
+      var opts = [[0, 'Άμεσα (κάθε φορά)'], [1, 'Μετά από 1 λεπτό'], [2, 'Μετά από 2 λεπτά'], [5, 'Μετά από 5 λεπτά'], [15, 'Μετά από 15 λεπτά']];
+      var sel = '';
+      opts.forEach(function (o) { sel += '<option value="' + o[0] + '"' + (o[0] === g ? ' selected' : '') + '>' + o[1] + '</option>'; });
+      row.innerHTML =
+        '<div style="padding:13px 0;border-top:1px solid #e6e8ec">'
+        + '<div style="font-weight:700;font-size:14px">Να ξαναζητάει κωδικό</div>'
+        + '<div style="font-size:12px;color:#6b7280;margin:2px 0 8px">Όταν φεύγεις από την εφαρμογή και γυρνάς — γρήγορη εναλλαγή δεν σε ενοχλεί.</div>'
+        + '<select id="cbl-grace" style="width:100%;padding:12px;border:1px solid #e6e8ec;border-radius:12px;font:inherit;background:#fff">' + sel + '</select></div>';
+      var s = el.querySelector('#cbl-grace');
+      if (s) s.addEventListener('change', function () { setGrace(s.value); note('✓ Αποθηκεύτηκε.', true); });
     }
 
     function renderFpRow() {
@@ -401,6 +436,6 @@
       });
     }
 
-    renderPinRow(); renderFpRow();
+    renderPinRow(); renderGraceRow(); renderFpRow();
   }
 })();
