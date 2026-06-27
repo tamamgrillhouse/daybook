@@ -37,9 +37,12 @@
       <button type="button" class="btn-danger" id="c-clear" style="width:100%">Αποσύνδεση κινητού</button>
       <div id="c-msg2" class="c-msg"></div>
     </div>
+    <!-- 🔒 Κλείδωμα εφαρμογής (PIN + δαχτυλικό) — κοινή κάρτα από το cashbox-lock.js -->
+    <div id="cbl-settings"></div>
   </div>
   <script src="./js/confirm.js"></script>
   <script src="./js/cashbox-sync.js"></script>
+  <script src="./js/cashbox-lock.js"></script>
   <script>
   (function(){
     function st(){
@@ -52,12 +55,16 @@
       var cc=document.getElementById('c-card-connect'), cm=document.getElementById('c-card-manage');
       if(cc) cc.style.display=connected?'none':'';
       if(cm) cm.style.display=connected?'':'none';
+      // Η κάρτα κλειδώματος φαίνεται μόνο όταν είναι συνδεδεμένο (αλλιώς δεν φαίνεται το αληθινό ταμείο).
+      var cl=document.getElementById('cbl-settings'); if(cl) cl.style.display=connected?'':'none';
     }
     document.getElementById('c-save').addEventListener('click',function(){
       var msg=document.getElementById('c-msg');
       var creds=window.CBSync&&CBSync.parsePayload((document.getElementById('c-code').value||'').trim());
       if(!creds){ msg.style.color='#b3261e'; msg.textContent='❌ Ο κωδικός δεν είναι σωστός.'; return; }
-      CBSync.setCreds(creds); msg.style.color='#1c7a3e';
+      CBSync.setCreds(creds);
+      if(window.CBLock) CBLock.clearAll();   // νέα σύνδεση = μηδενισμός κλειδώματος (reset PIN)
+      msg.style.color='#1c7a3e';
       msg.textContent='✅ Συνδέθηκε! Τώρα το ταμείο δουλεύει και με κλειστό υπολογιστή.'; st();
     });
     document.getElementById('c-test').addEventListener('click',function(){
@@ -74,6 +81,7 @@
         CBSync.clearCreds(); document.getElementById('c-msg2').textContent=''; st();
       },null,{title:'Αποσύνδεση',yesLabel:'Αποσύνδεση'});
     });
+    if(window.CBLock) CBLock.mountSettings(document.getElementById('cbl-settings'));
     st();
   })();
   </script>

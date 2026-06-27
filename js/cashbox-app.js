@@ -367,6 +367,8 @@
       var creds = CBSync.parsePayload(decodeURIComponent(m[1]));
       if (creds) {
         CBSync.setCreds(creds);
+        // Νέα σύνδεση από το QR του υπολογιστή = μηδενισμός κλειδώματος (μόνος τρόπος reset PIN/δαχτυλικού).
+        if (window.CBLock) CBLock.clearAll();
         history.replaceState(null, '', location.pathname + location.search);
         if (window.showAlert) showAlert('✅ Το κινητό συνδέθηκε με τη θυρίδα. Τώρα το Ταμείο δουλεύει και με κλειστό υπολογιστή.', { title: '📮 Σύνδεση κινητού' });
       }
@@ -451,7 +453,13 @@
     handleConnectHash();                                   // QR/σύνδεσμος μπορεί να βάλει το κλειδί
     var hasKey = !!(window.CBSync && CBSync.getCreds && CBSync.getCreds());
     var showReal = hasKey || !CFG.noLocal;                 // τοπικός server = έμπιστος· Pages θέλει κλειδί
-    if (showReal) { show(byId('app-decoy'), false); show(byId('app-real'), true); setup(); }
+    if (showReal) {
+      show(byId('app-decoy'), false); show(byId('app-real'), true);
+      // 🔒 Κλείδωμα: δείξε την κλειδαριά ΠΡΙΝ φανεί οτιδήποτε· ξανακλείδωμα όταν επιστρέφεις από παρασκήνιο.
+      if (window.CBLock && CBLock.isEnabled()) CBLock.lockNow();
+      setup();
+      if (window.CBLock) CBLock.arm();
+    }
     else { show(byId('app-real'), false); show(byId('app-decoy'), true); decoySetup(); }
   }
 

@@ -1,6 +1,6 @@
-var CACHE = 'cashbox-pages-5083aed15e';
+var CACHE = 'cashbox-pages-0e0dea8e11';
 var SHELL = ['./','./index.html','./connect.html','./manifest.webmanifest',
-  './css/cashbox-mobile.css','./js/cashbox-app.js','./js/cashbox-sync.js','./js/confirm.js',
+  './css/cashbox-mobile.css','./js/cashbox-app.js','./js/cashbox-sync.js','./js/cashbox-lock.js','./js/confirm.js',
   './icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png'];
 self.addEventListener('install', function(e){
   e.waitUntil(caches.open(CACHE).then(function(c){
