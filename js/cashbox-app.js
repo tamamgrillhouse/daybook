@@ -12,7 +12,7 @@
   var BASE = (CFG.apiBase != null) ? CFG.apiBase : '/cashbox';
   var API_STATE = BASE + '/api/state', API_OPS = BASE + '/api/ops';
   var SW_PATH = CFG.swPath || '/cashbox/sw.js', SW_SCOPE = CFG.swScope || '/cashbox';
-  var LS_STATE = 'cb_state', LS_QUEUE = 'cb_queue', LS_EYE = 'cb_bal_shown', LS_LASTSYNC = 'cb_last_sync';
+  var LS_STATE = 'cb_state', LS_QUEUE = 'cb_queue', LS_LASTSYNC = 'cb_last_sync';
 
   function load(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
   function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }

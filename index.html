@@ -41,15 +41,15 @@
     <div class="m-top-row">
       <div class="m-title">👜 Το ταμείο μου</div>
       <div class="m-tools">
-        <span class="m-sync" id="m-sync" title="Κατάσταση συγχρονισμού"></span>
         <a href="./connect.html" title="Σύνδεση θυρίδας">⚙️</a>
       </div>
     </div>
     <div class="m-bal-row">
       <span class="m-bal" id="m-bal" data-real="">••••• €</span>
-      <button class="m-eye" id="m-eye" type="button" aria-label="Εμφάνιση / απόκρυψη υπολοίπου">👁</button>
+      <button class="m-eye" id="m-eye" type="button" aria-label="Κράτα πατημένο για να δεις το υπόλοιπο">👁</button>
     </div>
-    <div class="m-sub">ΥΠΟΛΟΙΠΟ ΜΕΤΡΗΤΩΝ · ενημερώνεται μόνο του σε κάθε κίνηση</div>
+    <div class="m-sub">ΥΠΟΛΟΙΠΟ ΜΕΤΡΗΤΩΝ · κράτα πατημένο το 👁 για να το δεις</div>
+    <div class="m-conn" id="m-conn" title="Κατάσταση σύνδεσης"></div>
     <div class="m-syncline" id="m-syncline" title="Κατάσταση συγχρονισμού"></div>
   </header>
 
@@ -62,6 +62,11 @@
 
     <div class="m-sec">Πρόσφατες κινήσεις</div>
     <div class="m-feed" id="m-feed"></div>
+    <button class="m-more" id="m-more" type="button" style="display:none"><span class="m-more-t">Δες περισσότερες</span><span class="chev">▾</span></button>
+    <div class="m-hist" id="m-hist">
+      <div class="m-sec" style="margin-top:14px">Ιστορικό</div>
+      <div class="m-feed" id="m-hist-feed"></div>
+    </div>
     <div class="m-empty" id="m-empty" style="display:none">Καμία κίνηση ακόμα. Πάτα «🧾 Πληρωμή» ή «💸 Πήρα μετρητά» για να ξεκινήσεις.</div>
     <p class="m-foot" id="m-foot" style="display:none">✏️ διόρθωση / 🗑 σβήσιμο → το υπόλοιπο ξαναϋπολογίζεται μόνο του.</p>
   </main>
