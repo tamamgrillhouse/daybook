@@ -49,35 +49,68 @@
   function byId(id) { return document.getElementById(id); }
 
   // ── rendering ─────────────────────────────────────────────────────────────────
-  var eyeShown = (load(LS_EYE, '0') === '1') || (load(LS_EYE, 0) === 1);
+  // Το υπόλοιπο φαίνεται ΜΟΝΟ όσο κρατάς πατημένο (peek) — αλλιώς κρυμμένο.
+  var peeking = false;
   function renderBalance() {
-    var bal = byId('m-bal'); bal.dataset.real = euro(state.balance);
-    bal.textContent = eyeShown ? bal.dataset.real : '••••• €';
-    var eye = byId('m-eye'); if (eye) eye.textContent = eyeShown ? '🙈' : '👁';
+    var bal = byId('m-bal'); if (!bal) return;
+    bal.dataset.real = euro(state.balance);
+    bal.textContent = peeking ? bal.dataset.real : '••••• €';
   }
+  // Κατάσταση μιας κίνησης: ✓ έφτασε στον υπολογιστή / 📮 στη θυρίδα / ⏳ αναμονή.
+  // Προσωρινό id (tmp_…) = δεν έχει φτάσει ακόμα· πραγματικό (αριθμός) = έφτασε.
+  function itemState(e) {
+    var pending = (typeof e.id === 'string' && e.id.indexOf('tmp_') === 0);
+    if (!pending) return { cls: 'ok', txt: '✓ έφτασε' };
+    if (navigator.onLine && window.CBSync && CBSync.configured()) return { cls: 'box', txt: '📮 στη θυρίδα' };
+    return { cls: 'wait', txt: '⏳ αναμονή' };
+  }
+  function buildRow(e) {
+    var emo = e.withdrawal ? '💸' : (e.category_icon || '🧾');
+    var title = e.withdrawal ? 'Πήρα μετρητά' : (e.category_name || 'Έξοδο');
+    var biz = e.is_business ? '🟢' : '⚪';
+    var sub = e.withdrawal ? ('γενική ανάληψη · ' + fmtDate(e.entry_date)) : ('από ταμείο ' + fmtDate(e.source_day || e.entry_date));
+    if (e.description) sub += ' · ' + e.description;
+    var sign = e.direction === 'in' ? '+' : '−';
+    var ss = itemState(e);
+    var div = document.createElement('div'); div.className = 'm-it';
+    div.innerHTML = '<span class="emo">' + emo + '</span>'
+      + '<div class="tx"><div class="t1">' + esc(title) + ' <span class="bz">' + biz + '</span></div>'
+      + '<div class="t2">' + esc(sub) + '</div></div>'
+      + '<div class="meta"><div class="amt' + (e.direction === 'in' ? ' inn' : '') + '">' + sign + euro(e.amount) + '</div>'
+      + '<span class="st ' + ss.cls + '">' + ss.txt + '</span></div>'
+      + '<div class="acts"><button type="button" class="m-edit">✏️</button><button type="button" class="m-del">🗑</button></div>';
+    div.querySelector('.m-edit').addEventListener('click', function () { openEdit(e); });
+    div.querySelector('.m-del').addEventListener('click', function () { delEntry(e); });
+    return div;
+  }
+  var histOpen = false;
   function renderFeed() {
     var feed = byId('m-feed'), empty = byId('m-empty'), foot = byId('m-foot');
+    var moreBtn = byId('m-more'), hist = byId('m-hist'), histFeed = byId('m-hist-feed');
     feed.innerHTML = '';
     var rec = state.recent || [];
-    if (!rec.length) { empty.style.display = 'block'; foot.style.display = 'none'; feed.style.display = 'none'; return; }
+    if (!rec.length) {
+      empty.style.display = 'block'; foot.style.display = 'none'; feed.style.display = 'none';
+      if (moreBtn) moreBtn.style.display = 'none';
+      if (hist) hist.classList.remove('show');
+      return;
+    }
     empty.style.display = 'none'; foot.style.display = 'block'; feed.style.display = 'block';
-    rec.forEach(function (e) {
-      var emo = e.withdrawal ? '💸' : (e.category_icon || '🧾');
-      var title = e.withdrawal ? 'Πήρα μετρητά' : (e.category_name || 'Έξοδο');
-      var biz = e.is_business ? '🟢' : '⚪';
-      var sub = e.withdrawal ? ('γενική ανάληψη · ' + fmtDate(e.entry_date)) : ('από ταμείο ' + fmtDate(e.source_day || e.entry_date));
-      if (e.description) sub += ' · ' + e.description;
-      var sign = e.direction === 'in' ? '+' : '−';
-      var div = document.createElement('div'); div.className = 'm-it';
-      div.innerHTML = '<span class="emo">' + emo + '</span>'
-        + '<div class="tx"><div class="t1">' + esc(title) + ' <span class="bz">' + biz + '</span></div>'
-        + '<div class="t2">' + esc(sub) + '</div></div>'
-        + '<div class="amt' + (e.direction === 'in' ? ' inn' : '') + '">' + sign + euro(e.amount) + '</div>'
-        + '<div class="acts"><button type="button" class="m-edit">✏️</button><button type="button" class="m-del">🗑</button></div>';
-      div.querySelector('.m-edit').addEventListener('click', function () { openEdit(e); });
-      div.querySelector('.m-del').addEventListener('click', function () { delEntry(e); });
-      feed.appendChild(div);
-    });
+    var limit = (state.settings && state.settings.mobile_recent) || 5;
+    var head = rec.slice(0, limit), tail = rec.slice(limit);
+    head.forEach(function (e) { feed.appendChild(buildRow(e)); });
+    if (histFeed) { histFeed.innerHTML = ''; tail.forEach(function (e) { histFeed.appendChild(buildRow(e)); }); }
+    if (moreBtn) {
+      if (tail.length) {
+        moreBtn.style.display = 'flex';
+        moreBtn.classList.toggle('open', histOpen);
+        var t = moreBtn.querySelector('.m-more-t');
+        if (t) t.textContent = histOpen ? 'Λιγότερες' : ('Δες περισσότερες (' + tail.length + ')');
+      } else {
+        moreBtn.style.display = 'none'; histOpen = false;
+      }
+    }
+    if (hist) hist.classList.toggle('show', histOpen && tail.length > 0);
   }
   function fillDayOptions(sel) {
     sel.innerHTML = '';
@@ -124,21 +157,32 @@
     return pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
   function renderSync() {
-    var el = byId('m-sync'), line = byId('m-syncline');
+    var line = byId('m-syncline'), conn = byId('m-conn');
     var mailbox = (window.CBSync && CBSync.configured());
-    var emo, short, full, warn = false;
+    var emo, full, warn = false;
     if (!navigator.onLine) {
-      emo = '📴'; warn = true; short = 'Χωρίς δίκτυο'; full = 'Χωρίς δίκτυο — θα συγχρονιστεί μόλις βρεις internet';
+      emo = '📴'; warn = true; full = 'Χωρίς δίκτυο — θα συγχρονιστεί μόλις βρεις internet';
     } else if (queue.length && mailbox) {
-      emo = '📮'; warn = true; short = queue.length + ' στη θυρίδα'; full = queue.length + ' κινήσεις στη θυρίδα — περιμένουν τον υπολογιστή';
+      emo = '📮'; warn = true; full = queue.length + ' κινήσεις στη θυρίδα — περιμένουν τον υπολογιστή';
     } else if (queue.length) {
-      emo = '⏳'; warn = true; short = queue.length + ' σε αναμονή'; full = queue.length + ' αλλαγές περιμένουν συγχρονισμό';
+      emo = '⏳'; warn = true; full = queue.length + ' αλλαγές περιμένουν συγχρονισμό';
     } else {
       emo = '✓'; var t = hhmm(load(LS_LASTSYNC, 0));
-      short = 'Όλα συγχρονισμένα'; full = 'Όλα συγχρονισμένα' + (t ? ' · τελευταίος συγχρονισμός ' + t : '');
+      full = 'Όλα συγχρονισμένα' + (t ? ' · τελευταίος συγχρονισμός ' + t : '');
     }
-    if (el) { el.textContent = emo; el.title = full; }
-    if (line) { line.textContent = emo + ' ' + full; line.className = 'm-syncline' + (warn ? ' warn' : ''); }
+    if (line) {
+      line.innerHTML = '<span class="ic">' + emo + '</span><span>' + esc(full) + '</span>';
+      line.className = 'm-syncline' + (warn ? ' warn' : '');
+    }
+    // ζωντανό σηματάκι σύνδεσης: 🟢 συνδεδεμένο (online+θυρίδα) / 🟡 τοπικά / 🔴 χωρίς ίντερνετ
+    if (conn) {
+      var ck, ct;
+      if (!navigator.onLine) { ck = 'off'; ct = 'Χωρίς ίντερνετ'; }
+      else if (mailbox) { ck = 'ok'; ct = 'Συνδεδεμένο'; }
+      else { ck = 'loc'; ct = 'Τοπικά'; }
+      conn.className = 'm-conn ' + ck;
+      conn.innerHTML = '<span class="dot"></span><span>' + ct + '</span>';
+    }
   }
   function renderAll() { renderBalance(); renderFeed(); renderSelects(); renderCount(); renderSync(); }
 
@@ -336,7 +380,20 @@
     var closers = document.querySelectorAll('[data-close]'); for (var i = 0; i < closers.length; i++) closers[i].addEventListener('click', closeSheets);
     var tiles = document.querySelectorAll('[data-sheet]'); for (var j = 0; j < tiles.length; j++) (function (b) { b.addEventListener('click', function () { openSheet(b.dataset.sheet); }); })(tiles[j]);
 
-    byId('m-eye').addEventListener('click', function () { eyeShown = !eyeShown; save(LS_EYE, eyeShown ? '1' : '0'); renderBalance(); });
+    // 👁 peek: το υπόλοιπο φαίνεται ΜΟΝΟ όσο κρατάς πατημένο (ματάκι Ή ποσό)
+    function setPeek(on) { peeking = on; renderBalance(); }
+    [byId('m-eye'), byId('m-bal')].forEach(function (el) {
+      if (!el) return;
+      el.addEventListener('touchstart', function (ev) { ev.preventDefault(); setPeek(true); }, { passive: false });
+      el.addEventListener('touchend', function (ev) { ev.preventDefault(); setPeek(false); });
+      el.addEventListener('touchcancel', function () { setPeek(false); });
+      el.addEventListener('mousedown', function (ev) { ev.preventDefault(); setPeek(true); });
+    });
+    document.addEventListener('mouseup', function () { if (peeking) setPeek(false); });
+
+    var moreBtn = byId('m-more');
+    if (moreBtn) moreBtn.addEventListener('click', function () { histOpen = !histOpen; renderFeed(); });
+
     byId('pay-save').addEventListener('click', addPay);
     byId('draw-save').addEventListener('click', addDraw);
     byId('count-save').addEventListener('click', saveCount);
