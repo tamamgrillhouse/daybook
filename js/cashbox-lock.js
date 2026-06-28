@@ -101,7 +101,8 @@
   }
 
   // ── οθόνη κλειδώματος (φτιάχνεται μία φορά) ─────────────────────────────────────
-  var built = false, ovEl, dotsEl, errEl, padEl, subEl, forgotPanel, buf = '', onPass = null, armed = false, wasHidden = false;
+  var built = false, ovEl, dotsEl, errEl, padEl, forgotPanel, buf = '', onPass = null, armed = false, wasHidden = false;
+  var viewFp, viewPin, fpcEl, fpGlyphEl, fpLabelEl, fpSubEl, retryBtn, backfpBtn;
 
   function injectCss() {
     if (document.getElementById('cbl-css')) return;
@@ -133,16 +134,40 @@
       + '.cbl-key.ph{background:none;pointer-events:none}'
       + '.cbl-forgot{background:none;border:0;color:#fff;font:inherit;font-size:14px;font-weight:700;'
       + 'text-decoration:underline;opacity:.92;cursor:pointer;padding:8px}'
-      + '.cbl-fp-panel{position:fixed;inset:0;z-index:2147483001;display:none;align-items:flex-end;justify-content:center;background:rgba(10,12,16,.55)}'
-      + '.cbl-fp-panel.on{display:flex}'
-      + '.cbl-fp-card{background:#fff;color:#1f2430;width:100%;max-width:520px;border-radius:24px 24px 0 0;'
-      + 'padding:26px 22px;text-align:center}'
-      + '.cbl-fp-ring{width:74px;height:74px;margin:6px auto 14px;border-radius:50%;background:#fff3eb;display:flex;'
-      + 'align-items:center;justify-content:center;font-size:36px;color:#cf5f1e;border:3px solid #e8722c}'
-      + '.cbl-fp-ring.ok{background:#e9f7ee;border-color:#2e9e5b;color:#2e9e5b}'
-      + '.cbl-fp-ring.err{background:#fdecec;border-color:#d9453c;color:#d9453c}'
-      + '.cbl-fp-t{font-weight:800;font-size:17px}.cbl-fp-s{font-size:13px;color:#6b7280;margin:6px 0 18px}'
-      + '.cbl-fp-x{background:#fff;border:1px solid #e6e8ec;border-radius:12px;padding:13px;font:inherit;font-weight:700;width:100%;cursor:pointer;min-height:48px}'
+      // δύο «όψεις» μέσα στην ίδια πορτοκαλί οθόνη: δαχτυλικό / κωδικός
+      + '.cbl-view{display:none;flex:1;width:100%;flex-direction:column;align-items:center;justify-content:space-between}'
+      + '.cbl-view.on{display:flex}'
+      // animated δαχτυλικό στο κέντρο
+      + '.cbl-fpc{display:flex;flex-direction:column;align-items:center;gap:15px}'
+      + '.cbl-fpwrap{position:relative;width:140px;height:140px;display:flex;align-items:center;justify-content:center}'
+      + '.cbl-ring{position:absolute;inset:0;border-radius:50%;border:3px solid rgba(255,255,255,.5)}'
+      + '.cbl-ring.r2{inset:14px;border-color:rgba(255,255,255,.28)}'
+      + '.cbl-fpglyph{font-size:60px;line-height:1;z-index:2;filter:drop-shadow(0 4px 10px rgba(0,0,0,.18));transition:transform .25s}'
+      + '.cbl-sweep{position:absolute;left:0;right:0;height:46%;top:27%;overflow:hidden;border-radius:14px;z-index:3;opacity:0;pointer-events:none}'
+      + '.cbl-bar{position:absolute;left:-10%;right:-10%;height:5px;background:linear-gradient(90deg,transparent,#fff,transparent);box-shadow:0 0 14px 4px rgba(255,255,255,.7);border-radius:4px}'
+      + '.cbl-fplabel{font-size:15px;font-weight:700;text-align:center;min-height:22px}'
+      + '.cbl-fpsub{font-size:12.5px;opacity:.9;text-align:center;margin-top:-8px;max-width:240px}'
+      // κατάσταση «αναμονή»
+      + '.cbl-fpc.wait .cbl-ring{animation:cbl-ringp 1.6s ease-in-out infinite}'
+      + '.cbl-fpc.wait .cbl-ring.r2{animation:cbl-ringp 1.6s ease-in-out infinite .3s}'
+      + '.cbl-fpc.wait .cbl-fpglyph{animation:cbl-breathe 1.6s ease-in-out infinite}'
+      + '.cbl-fpc.wait .cbl-sweep{opacity:1}'
+      + '.cbl-fpc.wait .cbl-bar{animation:cbl-sweepm 1.5s linear infinite}'
+      + '@keyframes cbl-ringp{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.06);opacity:.9}}'
+      + '@keyframes cbl-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}'
+      + '@keyframes cbl-sweepm{0%{top:-10%}100%{top:104%}}'
+      // κατάσταση «πέτυχε»
+      + '.cbl-fpc.ok .cbl-ring{border-color:#bff0cf}.cbl-fpc.ok .cbl-ring.r2{border-color:#8fe0ad}'
+      + '.cbl-fpc.ok .cbl-fpwrap{animation:cbl-popok .4s ease}'
+      + '@keyframes cbl-popok{0%{transform:scale(.9)}55%{transform:scale(1.12)}100%{transform:scale(1)}}'
+      // κατάσταση «απέτυχε»
+      + '.cbl-fpc.fail .cbl-ring{border-color:#ffc9c2}.cbl-fpc.fail .cbl-ring.r2{border-color:#ff9d92}'
+      + '.cbl-fpc.fail .cbl-fpwrap{animation:cbl-shake .5s}'
+      // κουμπιά όψης δαχτυλικού
+      + '.cbl-usepin,.cbl-bigbtn{border-radius:14px;padding:14px;font:inherit;font-size:14.5px;font-weight:700;width:100%;max-width:300px;cursor:pointer;min-height:48px}'
+      + '.cbl-usepin{background:rgba(255,255,255,.16);border:1.5px solid rgba(255,255,255,.45);color:#fff}'
+      + '.cbl-bigbtn{background:#fff;color:#cf5f1e;border:1.5px solid #fff;display:none}'
+      + '.cbl-backfp{background:none;border:0;color:#fff;font:inherit;font-size:14px;font-weight:700;cursor:pointer;padding:8px;display:none}'
       + '.cbl-forgot-panel{position:fixed;inset:0;z-index:2147483002;display:none;background:#f5f6f8;color:#1f2430;overflow:auto;padding:18px 16px}'
       + '.cbl-forgot-panel.on{display:block}'
       + '.cbl-fcard{background:#fff;border:1px solid #e6e8ec;border-radius:16px;padding:16px 15px;max-width:520px;margin:0 auto 14px}'
@@ -162,21 +187,33 @@
     if (built) return; built = true; injectCss();
     ovEl = document.createElement('div'); ovEl.className = 'cbl-ov';
     ovEl.innerHTML =
-      '<div class="cbl-top"><div class="cbl-glyph">🔒</div>'
-      + '<div class="cbl-title">Ξεκλείδωσε το Ταμείο</div>'
-      + '<div class="cbl-sub" id="cbl-sub">Βάλε τον 6ψήφιο κωδικό</div></div>'
+      // ── όψη ΔΑΧΤΥΛΙΚΟΥ (animated κέντρο) ──
+      '<div class="cbl-view" id="cbl-view-fp">'
+      + '<div class="cbl-top"><div class="cbl-glyph">🔒</div>'
+      + '<div class="cbl-title">Ξεκλείδωσε το Ταμείο</div></div>'
+      + '<div class="cbl-fpc wait" id="cbl-fpc">'
+      +   '<div class="cbl-fpwrap"><div class="cbl-ring"></div><div class="cbl-ring r2"></div>'
+      +     '<div class="cbl-sweep"><div class="cbl-bar"></div></div>'
+      +     '<div class="cbl-fpglyph" id="cbl-fpglyph">👆</div></div>'
+      +   '<div class="cbl-fplabel" id="cbl-fplabel">Σάρωσε το δαχτυλικό σου</div>'
+      +   '<div class="cbl-fpsub" id="cbl-fpsub">Άγγιξε τον αισθητήρα του κινητού</div>'
+      + '</div>'
+      + '<div class="cbl-bottom">'
+      +   '<button type="button" class="cbl-bigbtn" id="cbl-retry">👆 Ξαναδοκίμασε το δαχτυλικό</button>'
+      +   '<button type="button" class="cbl-usepin" id="cbl-usepin">🔢 Χρήση κωδικού</button>'
+      +   '<button type="button" class="cbl-forgot" data-forgot>Ξέχασα τον κωδικό;</button>'
+      + '</div></div>'
+      // ── όψη ΚΩΔΙΚΟΥ (πληκτρολόγιο) ──
+      + '<div class="cbl-view" id="cbl-view-pin">'
+      + '<div class="cbl-top"><div class="cbl-glyph">🔢</div>'
+      + '<div class="cbl-title">Βάλε τον κωδικό</div>'
+      + '<div class="cbl-sub">6ψήφιος κωδικός</div></div>'
       + '<div class="cbl-mid"><div class="cbl-dots" id="cbl-dots"></div><div class="cbl-err" id="cbl-err"></div></div>'
       + '<div class="cbl-bottom"><div class="cbl-pad" id="cbl-pad"></div>'
-      + '<button type="button" class="cbl-forgot" id="cbl-forgot">Ξέχασα τον κωδικό;</button></div>';
+      +   '<button type="button" class="cbl-backfp" id="cbl-backfp">👆 Πίσω στο δαχτυλικό</button>'
+      +   '<button type="button" class="cbl-forgot" data-forgot>Ξέχασα τον κωδικό;</button></div>'
+      + '</div>';
     document.body.appendChild(ovEl);
-
-    // δαχτυλικό prompt (δικό μας «κάλυμμα» πάνω από το παράθυρο του Android)
-    var fp = document.createElement('div'); fp.className = 'cbl-fp-panel'; fp.id = 'cbl-fp';
-    fp.innerHTML = '<div class="cbl-fp-card"><div class="cbl-fp-ring" id="cbl-fpring">👆</div>'
-      + '<div class="cbl-fp-t" id="cbl-fpt">Σάρωσε το δαχτυλικό σου</div>'
-      + '<div class="cbl-fp-s" id="cbl-fps">Άγγιξε τον αισθητήρα του κινητού</div>'
-      + '<button type="button" class="cbl-fp-x" id="cbl-fpx">Χρήση κωδικού αντί για δαχτυλικό</button></div>';
-    document.body.appendChild(fp);
 
     // οθόνη «ξέχασα τον κωδικό»
     forgotPanel = document.createElement('div'); forgotPanel.className = 'cbl-forgot-panel'; forgotPanel.id = 'cbl-forgot-panel';
@@ -196,31 +233,41 @@
     dotsEl = document.getElementById('cbl-dots');
     errEl = document.getElementById('cbl-err');
     padEl = document.getElementById('cbl-pad');
-    subEl = document.getElementById('cbl-sub');
+    viewFp = document.getElementById('cbl-view-fp');
+    viewPin = document.getElementById('cbl-view-pin');
+    fpcEl = document.getElementById('cbl-fpc');
+    fpGlyphEl = document.getElementById('cbl-fpglyph');
+    fpLabelEl = document.getElementById('cbl-fplabel');
+    fpSubEl = document.getElementById('cbl-fpsub');
+    retryBtn = document.getElementById('cbl-retry');
+    backfpBtn = document.getElementById('cbl-backfp');
     for (var i = 0; i < PIN_LEN; i++) { var d = document.createElement('div'); d.className = 'cbl-dot'; dotsEl.appendChild(d); }
 
     padEl.addEventListener('click', function (e) {
       var k = e.target.closest('button'); if (!k) return;
-      if (k.dataset.fp !== undefined) { startFp(); return; }
       if (k.dataset.bk !== undefined) { buf = buf.slice(0, -1); paintDots(); return; }
       if (k.dataset.k === undefined) return;
       if (buf.length >= PIN_LEN) return;
       buf += k.dataset.k; paintDots();
       if (buf.length === PIN_LEN) setTimeout(tryPin, 120);
     });
-    document.getElementById('cbl-forgot').addEventListener('click', function () { forgotPanel.classList.add('on'); });
+    // «Ξέχασα τον κωδικό;» υπάρχει και στις δύο όψεις
+    var fbs = ovEl.querySelectorAll('[data-forgot]');
+    for (var j = 0; j < fbs.length; j++) fbs[j].addEventListener('click', function () { forgotPanel.classList.add('on'); });
     document.getElementById('cbl-fback').addEventListener('click', function () { forgotPanel.classList.remove('on'); });
     document.getElementById('cbl-goconn').addEventListener('click', function () { location.href = CONNECT_URL; });
-    document.getElementById('cbl-fpx').addEventListener('click', cancelFp);
+    // εναλλαγή δαχτυλικό ↔ κωδικός
+    document.getElementById('cbl-usepin').addEventListener('click', showPinView);
+    backfpBtn.addEventListener('click', startFp);
+    retryBtn.addEventListener('click', startFp);
   }
 
   function renderPad() {
     var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
     var html = '';
     keys.forEach(function (n) { html += '<button type="button" class="cbl-key" data-k="' + n + '">' + n + '</button>'; });
-    // κάτω σειρά: [δαχτυλικό ή κενό] [0] [⌫]
-    if (fpOn() && fpSupported()) html += '<button type="button" class="cbl-key fn" data-fp title="Δαχτυλικό">👆</button>';
-    else html += '<span class="cbl-key ph"></span>';
+    // κάτω σειρά: [κενό] [0] [⌫]  (το δαχτυλικό έχει δική του όψη πλέον)
+    html += '<span class="cbl-key ph"></span>';
     html += '<button type="button" class="cbl-key" data-k="0">0</button>';
     html += '<button type="button" class="cbl-key bk" data-bk title="Σβήσιμο">⌫</button>';
     padEl.innerHTML = html;
@@ -250,25 +297,38 @@
     if (cb) try { cb(); } catch (e) {}
   }
 
-  // δαχτυλικό: εμφάνισε το «κάλυμμα» + κάλεσε το WebAuthn (το Android βγάζει το δικό του παράθυρο)
+  // ── εναλλαγή όψεων ─────────────────────────────────────────────────────────────
+  function setFpc(state, glyph, label, sub) {
+    fpcEl.className = 'cbl-fpc ' + state;
+    fpGlyphEl.textContent = glyph; fpLabelEl.textContent = label; fpSubEl.textContent = sub;
+  }
+  // Δείξε την όψη δαχτυλικού σε «αναμονή» (χωρίς να καλέσει ακόμα το WebAuthn).
+  function showFpView() {
+    viewPin.classList.remove('on'); viewFp.classList.add('on');
+    retryBtn.style.display = 'none';
+    setFpc('wait', '👆', 'Σάρωσε το δαχτυλικό σου', 'Άγγιξε τον αισθητήρα του κινητού');
+  }
+  // Δείξε την όψη κωδικού· κουμπί «πίσω στο δαχτυλικό» μόνο αν το δαχτυλικό είναι ενεργό.
+  function showPinView() {
+    viewFp.classList.remove('on'); viewPin.classList.add('on');
+    resetEntry();
+    backfpBtn.style.display = (fpOn() && fpSupported()) ? 'block' : 'none';
+  }
+
+  // δαχτυλικό: όψη-αναμονής + κάλεσε το WebAuthn (το Android βγάζει το δικό του παράθυρο).
+  // Το εφέ στο κέντρο δείχνει live το ΤΕΛΙΚΟ αποτέλεσμα (πέτυχε/απέτυχε) — όχι ανά άγγιγμα (όριο του Android).
   function startFp() {
-    if (!(fpOn() && fpSupported())) return;
-    var fp = document.getElementById('cbl-fp'), ring = document.getElementById('cbl-fpring');
-    ring.className = 'cbl-fp-ring'; ring.textContent = '👆';
-    document.getElementById('cbl-fpt').textContent = 'Σάρωσε το δαχτυλικό σου';
-    document.getElementById('cbl-fps').textContent = 'Άγγιξε τον αισθητήρα του κινητού';
-    fp.classList.add('on');
+    if (!(fpOn() && fpSupported())) { showPinView(); return; }
+    showFpView();
     verifyFp().then(function () {
-      ring.className = 'cbl-fp-ring ok'; ring.textContent = '✓';
-      document.getElementById('cbl-fpt').textContent = 'Επιτυχία!';
-      document.getElementById('cbl-fps').textContent = 'Καλώς ήρθες';
-      setTimeout(function () { fp.classList.remove('on'); pass(); }, 450);
+      setFpc('ok', '✓', 'Ξεκλείδωσε!', 'Καλώς ήρθες');
+      setTimeout(pass, 600);
     }).catch(function () {
-      // αποτυχία/άκυρο → κρύψε το κάλυμμα, μένει ο κωδικός
-      fp.classList.remove('on');
+      // αποτυχία/άκυρο (ή ο χρήστης έκλεισε το παράθυρο του Android) → δείξε «ξαναδοκίμασε / κωδικός»
+      setFpc('fail', '✗', 'Δεν αναγνωρίστηκε', 'Ξαναδοκίμασε ή πάτησε «Χρήση κωδικού»');
+      retryBtn.style.display = 'block';
     });
   }
-  function cancelFp() { var fp = document.getElementById('cbl-fp'); if (fp) fp.classList.remove('on'); }
 
   // ── δημόσιο API ────────────────────────────────────────────────────────────────
   // Δείξε το κλείδωμα· τρέξε onUnlock όταν ξεκλειδώσει (ή αμέσως αν δεν είναι ενεργό).
@@ -277,10 +337,12 @@
     build();
     onPass = onUnlock || null;
     resetEntry(); renderPad();
-    subEl.textContent = (fpOn() && fpSupported()) ? 'Δαχτυλικό ή 6ψήφιος κωδικός' : 'Βάλε τον 6ψήφιο κωδικό';
     ovEl.classList.add('on');
     document.body.style.overflow = 'hidden';
-    if (fpOn() && fpSupported()) setTimeout(startFp, 250);   // αυτόματο δαχτυλικό
+    // Δαχτυλικό ενεργό → η όψη δαχτυλικού εμφανίζεται ΠΑΝΤΑ πρώτη + αυτόματο σκανάρισμα·
+    // ο χρήστης μπορεί να πατήσει «Χρήση κωδικού». Αλλιώς → κατευθείαν ο κωδικός.
+    if (fpOn() && fpSupported()) { showFpView(); setTimeout(startFp, 250); }
+    else { showPinView(); }
   }
   function lockNow() { guard(null); }
   function isOpen() { return !!(ovEl && ovEl.classList.contains('on')); }
