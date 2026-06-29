@@ -188,8 +188,8 @@
 
   // ── sheets (bottom) ─────────────────────────────────────────────────────────
   var ov;
-  function openSheet(id) { var s = byId(id); if (!s) return; ov.classList.add('on'); s.classList.add('on'); document.body.style.overflow = 'hidden'; }
-  function closeSheets() { ov.classList.remove('on'); var l = document.querySelectorAll('.m-sheet.on'); for (var i = 0; i < l.length; i++) l[i].classList.remove('on'); document.body.style.overflow = ''; }
+  function openSheet(id) { var s = byId(id); if (!s) return; if (ov) ov.classList.add('on'); s.classList.add('on'); document.body.style.overflow = 'hidden'; }
+  function closeSheets() { if (ov) ov.classList.remove('on'); var l = document.querySelectorAll('.m-sheet.on'); for (var i = 0; i < l.length; i++) l[i].classList.remove('on'); document.body.style.overflow = ''; }
 
   // ── actions ─────────────────────────────────────────────────────────────────
   // κάθε γράμμα κουβαλά «πότε έγινε στο κινητό» (ts) → ο υπολογιστής κρατά την πιο πρόσφατη αλλαγή
