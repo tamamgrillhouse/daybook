@@ -331,7 +331,10 @@
       .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
       .then(function (res) {
         lastVia = 'local';
-        ackAndAdopt(res.state, sending.map(function (o) { return o.uid; }));  // ο server τα εφάρμοσε → ack όλα
+        // ack ΜΟΝΟ όσα ο server όντως εφάρμοσε (applied_uids)· οι αποτυχημένες μένουν στην ουρά
+        // για επανάληψη. (παλιός server χωρίς applied_uids → ack όλα, όπως πριν)
+        var ack = res.applied_uids || sending.map(function (o) { return o.uid; });
+        ackAndAdopt(res.state, ack);
         syncing = false; renderAll();
         if (queue.length) trySync();
       })
