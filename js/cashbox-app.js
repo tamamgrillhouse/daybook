@@ -260,25 +260,26 @@
     if (!editWithdrawal) item.source_day = day;
     var c = (state.categories || []).filter(function (x) { return String(x.id) === String(cat); })[0];
     item.category_name = c ? c.name : null; item.category_icon = c ? c.icon : null;
-    if (String(editId).indexOf('tmp_') === 0) {
-      var u = String(editId).slice(4);
-      queue.forEach(function (op) { if (op.uid === u) { op.amount = amt; op.category_id = cat; op.is_business = biz; op.description = desc; if (!editWithdrawal) op.source_day = day; } });
-      save(LS_QUEUE, queue);
-    } else {
-      enqueue({ uid: uid(), type: 'entry_edit', id: editId, amount: amt, category_id: cat, is_business: biz, description: desc, source_day: editWithdrawal ? null : day });
-    }
+    // ΠΑΝΤΑ νέα ενέργεια (ποτέ ξαναγράψιμο γράμματος που ίσως έχει ήδη φύγει στη θυρίδα):
+    // αν η κίνηση δεν έχει ακόμα πραγματικό id (tmp_), στείλε ref_uid = το uid της δημιουργίας.
+    var op = { uid: uid(), type: 'entry_edit', amount: amt, category_id: cat, is_business: biz, description: desc, source_day: editWithdrawal ? null : day };
+    if (String(editId).indexOf('tmp_') === 0) op.ref_uid = String(editId).slice(4);
+    else op.id = editId;
+    enqueue(op);
     save(LS_STATE, state); renderAll(); closeSheets(); trySync();
   }
   function delEntry(e) {
     window.showConfirm('Σβήσιμο αυτής της κίνησης (' + euro(e.amount) + ');', function () {
       state.balance = round2(state.balance + (e.direction === 'in' ? -e.amount : e.amount));
       state.recent = (state.recent || []).filter(function (x) { return x.id !== e.id; });
-      if (typeof e.id === 'string' && e.id.indexOf('tmp_') === 0) {
-        var u = e.id.slice(4); queue = queue.filter(function (op) { return op.uid !== u; });
-      } else {
-        enqueue({ uid: uid(), type: 'entry_delete', id: e.id });
-      }
-      save(LS_STATE, state); save(LS_QUEUE, queue); renderAll(); trySync();
+      // ΠΑΝΤΑ νέα ενέργεια: αν η κίνηση δεν έχει φτάσει ακόμα (tmp_) στείλε ref_uid =
+      // το uid της δημιουργίας· ο υπολογιστής τη δημιουργεί και μετά τη σβήνει (σωστό
+      // ακόμα κι αν το γράμμα δημιουργίας έχει ήδη ανέβει στη θυρίδα).
+      var op = { uid: uid(), type: 'entry_delete' };
+      if (typeof e.id === 'string' && e.id.indexOf('tmp_') === 0) op.ref_uid = e.id.slice(4);
+      else op.id = e.id;
+      enqueue(op);
+      save(LS_STATE, state); renderAll(); trySync();
     }, null, { title: 'Σβήσιμο', yesLabel: 'Σβήσιμο' });
   }
 
