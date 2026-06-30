@@ -327,7 +327,11 @@
     syncing = true;
     var sending = queue.slice();
     if (CFG.noLocal) { trySyncMailbox(sending); return; }   // Pages → καμία τοπική προσπάθεια, κατευθείαν θυρίδα
-    fetch(API_OPS, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ ops: sending }) })
+    // 🛡️ CSRF: στον τοπικό server το <meta> έχει το token· στο Pages δεν υπάρχει (δεν χτυπά τον server).
+    var _h = { 'Content-Type': 'application/json' };
+    var _m = document.querySelector('meta[name="csrf-token"]');
+    if (_m && _m.content) _h['X-CSRF-Token'] = _m.content;
+    fetch(API_OPS, { method: 'POST', headers: _h, credentials: 'same-origin', body: JSON.stringify({ ops: sending }) })
       .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
       .then(function (res) {
         lastVia = 'local';
