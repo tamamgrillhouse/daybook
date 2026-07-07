@@ -14,11 +14,11 @@ body{font-family:'Segoe UI',system-ui,Roboto,Arial,sans-serif;background:var(--b
 
 /* shared buttons (also used by confirm.js popup) */
 .btn-primary{background:var(--orange);color:#fff;border:0;font:inherit;font-weight:800;border-radius:12px;
-  padding:13px 16px;cursor:pointer;min-height:48px}
+  padding:13px 16px;cursor:pointer;min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
 .btn-secondary{background:#fff;color:var(--ink);border:1px solid var(--line);font:inherit;font-weight:700;
-  border-radius:12px;padding:13px 16px;cursor:pointer;min-height:48px}
+  border-radius:12px;padding:13px 16px;cursor:pointer;min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
 .btn-danger{background:#fff;color:var(--red);border:1px solid #f2c4c1;font:inherit;font-weight:700;
-  border-radius:12px;padding:13px 16px;cursor:pointer;min-height:48px}
+  border-radius:12px;padding:13px 16px;cursor:pointer;min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
 
 /* top bar */
 .m-top{background:linear-gradient(135deg,#f08a3d,var(--orange));color:#fff;padding:20px 18px 22px;
@@ -79,7 +79,7 @@ body{font-family:'Segoe UI',system-ui,Roboto,Arial,sans-serif;background:var(--b
 .m-it .amt{font-weight:800;font-variant-numeric:tabular-nums;color:var(--red)}
 .m-it .amt.inn{color:var(--green)}
 .m-it .acts{display:flex;gap:5px}
-.m-it .acts button{border:1px solid var(--line);background:#fff;border-radius:9px;width:34px;height:34px;cursor:pointer;font-size:14px}
+.m-it .acts button{border:1px solid var(--line);background:#fff;border-radius:9px;width:34px;height:34px;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;justify-content:center}
 .bz{font-size:11px}
 /* σηματάκι κατάστασης ανά κίνηση: ✓ έφτασε / 📮 στη θυρίδα / ⏳ αναμονή */
 .st{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:999px;white-space:nowrap}
@@ -113,7 +113,7 @@ body{font-family:'Segoe UI',system-ui,Roboto,Arial,sans-serif;background:var(--b
 .m-crow .tag.g{background:var(--green-l);color:var(--green)}
 .m-crow .tag.p{background:var(--grey-l);color:var(--grey)}
 .m-crow .acts{display:flex;gap:5px}
-.m-crow .acts button{border:1px solid var(--line);background:#fff;border-radius:9px;width:34px;height:34px;cursor:pointer;font-size:14px}
+.m-crow .acts button{border:1px solid var(--line);background:#fff;border-radius:9px;width:34px;height:34px;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;justify-content:center}
 
 /* bottom sheets */
 .m-ov{position:fixed;inset:0;background:rgba(15,18,25,.5);z-index:900;opacity:0;pointer-events:none;transition:opacity .2s}
