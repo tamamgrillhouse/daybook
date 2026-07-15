@@ -25,7 +25,7 @@
     </header>
     <main class="m-body">
       <div style="display:flex;gap:8px;margin-bottom:14px">
-        <input id="nx-input" placeholder="Γράψε μια σημείωση…" style="flex:1;padding:13px 12px;border:1px solid var(--line);border-radius:12px;font:inherit">
+        <input id="nx-input" style="flex:1;padding:13px 12px;border:1px solid var(--line);border-radius:12px;font:inherit">
         <button type="button" class="btn-primary" id="nx-add">Προσθήκη</button>
       </div>
       <div class="m-feed" id="nx-list"></div>
@@ -81,14 +81,14 @@
     <div class="m-fld"><label>Από ποιο ταμείο μέρας;</label><select id="pay-day"></select>
       <div class="m-hint">Προ-διαλεγμένη η <b>προηγούμενη ανοιχτή μέρα</b> · το ρεπό παρακάμπτεται.</div></div>
     <div class="m-fld"><label>Κατηγορία</label><select id="pay-cat"></select></div>
-    <div class="m-fld"><label>Ποσό (€)</label><input id="pay-amount" inputmode="decimal" placeholder="0,00"></div>
+    <div class="m-fld"><label>Ποσό (€)</label><input id="pay-amount" inputmode="decimal"></div>
     <div class="m-fld"><label>Είναι της επιχείρησης;</label>
       <div class="m-tog">
         <label class="g"><input type="radio" name="pay-biz" value="1" checked>🟢 Επιχείρηση</label>
         <label class="p"><input type="radio" name="pay-biz" value="0">⚪ Προσωπικό</label>
       </div>
     </div>
-    <div class="m-fld"><label>Σημείωση (προαιρετικό)</label><input id="pay-desc" placeholder="π.χ. καθαρίστρια"></div>
+    <div class="m-fld"><label>Σημείωση (προαιρετικό)</label><input id="pay-desc"></div>
     <button type="button" class="btn-primary" id="pay-save" style="width:100%">Αποθήκευση</button>
   </div>
 
@@ -97,14 +97,14 @@
     <div class="m-grip"></div>
     <div class="m-sheet-h"><span>💸 Πήρα μετρητά (για μένα)</span><button class="x" data-close>✕</button></div>
     <div class="m-note">Γενική ανάληψη από το <b>σύνολο</b>, με <b>σημερινή</b> ημερομηνία — χωρίς επιλογέα μέρας.</div>
-    <div class="m-fld"><label>Ποσό (€)</label><input id="draw-amount" inputmode="decimal" placeholder="0,00"></div>
+    <div class="m-fld"><label>Ποσό (€)</label><input id="draw-amount" inputmode="decimal"></div>
     <div class="m-fld"><label>Είναι της επιχείρησης;</label>
       <div class="m-tog">
         <label class="p"><input type="radio" name="draw-biz" value="0" checked>⚪ Προσωπικό</label>
         <label class="g"><input type="radio" name="draw-biz" value="1">🟢 Επιχείρηση</label>
       </div>
     </div>
-    <div class="m-fld"><label>Σημείωση (προαιρετικό)</label><input id="draw-desc" placeholder="π.χ. ψώνια σπιτιού"></div>
+    <div class="m-fld"><label>Σημείωση (προαιρετικό)</label><input id="draw-desc"></div>
     <button type="button" class="btn-primary" id="draw-save" style="width:100%">Αποθήκευση</button>
   </div>
 

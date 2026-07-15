@@ -412,9 +412,9 @@
       noteClear();
       box.style.display = 'block';
       box.innerHTML =
-        (hasPin() ? '<div class="m-fld"><label>Τωρινός κωδικός</label><input id="cbl-cur" inputmode="numeric" maxlength="6" placeholder="••••••" style="letter-spacing:4px;text-align:center"></div>' : '')
-        + '<div class="m-fld"><label>Νέος 6ψήφιος κωδικός</label><input id="cbl-n1" inputmode="numeric" maxlength="6" placeholder="••••••" style="letter-spacing:4px;text-align:center"></div>'
-        + '<div class="m-fld"><label>Ξανά ο νέος κωδικός</label><input id="cbl-n2" inputmode="numeric" maxlength="6" placeholder="••••••" style="letter-spacing:4px;text-align:center"></div>'
+        (hasPin() ? '<div class="m-fld"><label>Τωρινός κωδικός</label><input id="cbl-cur" inputmode="numeric" maxlength="6" style="letter-spacing:4px;text-align:center"></div>' : '')
+        + '<div class="m-fld"><label>Νέος 6ψήφιος κωδικός</label><input id="cbl-n1" inputmode="numeric" maxlength="6" style="letter-spacing:4px;text-align:center"></div>'
+        + '<div class="m-fld"><label>Ξανά ο νέος κωδικός</label><input id="cbl-n2" inputmode="numeric" maxlength="6" style="letter-spacing:4px;text-align:center"></div>'
         + '<button type="button" class="btn-primary" id="cbl-pinsave" style="width:100%">Αποθήκευση κωδικού</button>';
       el.querySelector('#cbl-pinsave').addEventListener('click', savePin);
     }
@@ -438,7 +438,7 @@
         var box = el.querySelector('#cbl-set-pinbox');
         box.style.display = 'block';
         box.innerHTML = '<div class="m-fld"><label>Επιβεβαίωσε τον τωρινό κωδικό για κατάργηση</label>'
-          + '<input id="cbl-rmcur" inputmode="numeric" maxlength="6" placeholder="••••••" style="letter-spacing:4px;text-align:center"></div>'
+          + '<input id="cbl-rmcur" inputmode="numeric" maxlength="6" style="letter-spacing:4px;text-align:center"></div>'
           + '<button type="button" class="btn-danger" id="cbl-rmgo" style="width:100%">Κατάργηση κλειδώματος</button>';
         el.querySelector('#cbl-rmgo').addEventListener('click', function () {
           verifyPin((el.querySelector('#cbl-rmcur').value || '').trim()).then(function (ok) {
