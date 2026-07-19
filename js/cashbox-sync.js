@@ -78,8 +78,13 @@
     try { var v = JSON.parse(localStorage.getItem(LS_CREDS)); return (v && v.repo && v.token && v.key) ? v : null; }
     catch (e) { return null; }
   }
-  function setCreds(c) { localStorage.setItem(LS_CREDS, JSON.stringify({ repo: c.repo, token: c.token, key: c.key })); }
-  function clearCreds() { localStorage.removeItem(LS_CREDS); }
+  // true/false: αν ο browser μπλοκάρει την αποθήκευση, η σύνδεση ΔΕΝ έγινε — ο καλών
+  // πρέπει να το πει, όχι να δείξει «✅ συνδέθηκε» για κάτι που δεν γράφτηκε.
+  function setCreds(c) {
+    try { localStorage.setItem(LS_CREDS, JSON.stringify({ repo: c.repo, token: c.token, key: c.key })); return true; }
+    catch (e) { return false; }
+  }
+  function clearCreds() { try { localStorage.removeItem(LS_CREDS); return true; } catch (e) { return false; } }
   function configured() { return !!getCreds() && !!subtle; }
 
   // Δέξου: «TS1.<base64url>», ή ολόκληρο URL που περιέχει cb=<payload> (#cb= ή ?cb=),

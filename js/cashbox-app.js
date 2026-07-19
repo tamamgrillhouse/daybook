@@ -14,8 +14,31 @@
   var SW_PATH = CFG.swPath || '/cashbox/sw.js', SW_SCOPE = CFG.swScope || '/cashbox';
   var LS_STATE = 'cb_state', LS_QUEUE = 'cb_queue', LS_LASTSYNC = 'cb_last_sync';
 
+  // Ουρά που δεν αδειάζει = χαλασμένη σύνδεση (π.χ. έληξε το token), ΟΧΙ γεμάτος χώρος.
+  // ~200 κινήσεις ≈ μία εβδομάδα δουλειάς → πάνω από αυτό, φώναξέ το.
+  var QUEUE_WARN = 200;
+  var RECENT_KEEP = 100;   // ιστορικό ΜΟΝΟ για την οθόνη — ο υπολογιστής κρατά τα πάντα
+
   function load(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
-  function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  // επιστρέφει true/false: ο καλών ΠΡΕΠΕΙ να ξέρει αν όντως γράφτηκε (γεμάτος χώρος =
+  // η κίνηση ζει μόνο στη μνήμη και χάνεται στο επόμενο άνοιγμα → πρέπει να φανεί)
+  function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+
+  var fullWarned = false;
+  function storageFull() {
+    if (fullWarned) return;    // μία φορά ανά άνοιγμα — όχι σε κάθε πάτημα
+    fullWarned = true;
+    if (typeof window.showAlert === 'function') {
+      window.showAlert('Ο χώρος του κινητού γέμισε και η κίνηση ΔΕΝ αποθηκεύτηκε.\n\n'
+        + 'Σύνδεσε το κινητό στο ίντερνετ για να σταλούν οι κινήσεις που περιμένουν. '
+        + 'Μόλις σταλούν, ο χώρος αδειάζει μόνος του.', { title: '⚠️ Γέμισε ο χώρος' });
+    }
+  }
+  // κάθε γράψιμο του state περνά από εδώ: κόβει το ιστορικό οθόνης + φωνάζει αν γέμισε
+  function saveState() {
+    if (state && state.recent && state.recent.length > RECENT_KEEP) state.recent = state.recent.slice(0, RECENT_KEEP);
+    if (!save(LS_STATE, state)) storageFull();
+  }
 
   function emptyState() { return { balance: 0, settings: {}, week: { rows: [], totals: {} }, picker: { days: [], default: '' }, categories: [], recent: [], closed_days: [], stats: {} }; }
 
@@ -23,7 +46,7 @@
   var queue = load(LS_QUEUE, []);
   if (!state) {
     try { state = JSON.parse(document.getElementById('cb-initial').textContent); } catch (e) { state = emptyState(); }
-    save(LS_STATE, state);
+    saveState();
   }
 
   // ── helpers ─────────────────────────────────────────────────────────────────
@@ -160,7 +183,11 @@
     var line = byId('m-syncline'), conn = byId('m-conn');
     var mailbox = (window.CBSync && CBSync.configured());
     var emo, full, warn = false;
-    if (!navigator.onLine) {
+    if (queue.length >= QUEUE_WARN) {
+      // τόσες αστάλτες κινήσεις δεν είναι «περιμένω δίκτυο» — κάτι έχει χαλάσει στη σύνδεση
+      emo = '⚠️'; warn = true;
+      full = queue.length + ' κινήσεις δεν έχουν σταλεί — κάτι δεν πάει καλά με τη σύνδεση. Άνοιξε Ρυθμίσεις → Δοκιμή.';
+    } else if (!navigator.onLine) {
       emo = '📴'; warn = true; full = 'Χωρίς δίκτυο — θα συγχρονιστεί μόλις βρεις internet';
     } else if (queue.length && mailbox) {
       emo = '📮'; warn = true; full = queue.length + ' κινήσεις στη θυρίδα — περιμένουν τον υπολογιστή';
@@ -193,7 +220,13 @@
 
   // ── actions ─────────────────────────────────────────────────────────────────
   // κάθε γράμμα κουβαλά «πότε έγινε στο κινητό» (ts) → ο υπολογιστής κρατά την πιο πρόσφατη αλλαγή
-  function enqueue(op) { if (op.ts == null) op.ts = Date.now(); queue.push(op); save(LS_QUEUE, queue); }
+  // ΔΕΝ κόβουμε ποτέ την ουρά: ένα όριο θα πετούσε κινήσεις = χαμένα λεφτά.
+  // Αν δεν γράφτηκε, ο ιδιοκτήτης πρέπει να το μάθει ΤΩΡΑ (αλλιώς χάνεται σιωπηλά στο reload).
+  function enqueue(op) {
+    if (op.ts == null) op.ts = Date.now();
+    queue.push(op);
+    if (!save(LS_QUEUE, queue)) storageFull();
+  }
 
   function addPay() {
     var amt = parseAmt(byId('pay-amount').value); if (!(amt > 0)) { closeSheets(); return; }
@@ -206,7 +239,7 @@
     state.balance = round2(state.balance - amt);
     var c = (state.categories || []).filter(function (x) { return String(x.id) === String(cat); })[0];
     state.recent.unshift({ id: 'tmp_' + u, entry_date: todayIso(), source_day: day, amount: amt, direction: 'out', category_id: cat, category_name: c ? c.name : null, category_icon: c ? c.icon : null, description: desc, is_business: biz, withdrawal: false });
-    save(LS_STATE, state); byId('pay-amount').value = ''; byId('pay-desc').value = '';
+    saveState(); byId('pay-amount').value = ''; byId('pay-desc').value = '';
     renderAll(); closeSheets(); trySync();
   }
   function addDraw() {
@@ -217,7 +250,7 @@
     enqueue({ uid: u, type: 'withdraw', amount: amt, is_business: biz, description: desc });
     state.balance = round2(state.balance - amt);
     state.recent.unshift({ id: 'tmp_' + u, entry_date: todayIso(), source_day: null, amount: amt, direction: 'out', category_id: null, category_name: null, category_icon: null, description: desc, is_business: biz, withdrawal: true });
-    save(LS_STATE, state); byId('draw-amount').value = ''; byId('draw-desc').value = '';
+    saveState(); byId('draw-amount').value = ''; byId('draw-desc').value = '';
     renderAll(); closeSheets(); trySync();
   }
   function saveCount() {
@@ -231,7 +264,7 @@
       if (row) { state.balance = round2(state.balance - old + val); row.counted = val; }
       changed = true;
     }
-    if (changed) { recomputeWeekCounted(); save(LS_STATE, state); renderAll(); trySync(); }
+    if (changed) { recomputeWeekCounted(); saveState(); renderAll(); trySync(); }
     closeSheets();
   }
 
@@ -266,7 +299,7 @@
     if (String(editId).indexOf('tmp_') === 0) op.ref_uid = String(editId).slice(4);
     else op.id = editId;
     enqueue(op);
-    save(LS_STATE, state); renderAll(); closeSheets(); trySync();
+    saveState(); renderAll(); closeSheets(); trySync();
   }
   function delEntry(e) {
     window.showConfirm('Σβήσιμο αυτής της κίνησης (' + euro(e.amount) + ');', function () {
@@ -279,7 +312,7 @@
       if (typeof e.id === 'string' && e.id.indexOf('tmp_') === 0) op.ref_uid = e.id.slice(4);
       else op.id = e.id;
       enqueue(op);
-      save(LS_STATE, state); renderAll(); trySync();
+      saveState(); renderAll(); trySync();
     }, null, { title: 'Σβήσιμο', yesLabel: 'Σβήσιμο' });
   }
 
@@ -299,7 +332,7 @@
     // τις τοπικές κινήσεις που ο υπολογιστής δεν έχει δει ακόμα (single-user → ασφαλές).
     if (!queue.length) save(LS_LASTSYNC, Date.now());   // άδεια ουρά = ο υπολογιστής τα έχει όλα
     if (authState && authState.balance != null && !queue.length) {
-      state = authState; save(LS_STATE, state);
+      state = authState; saveState();
     }
   }
 
@@ -349,18 +382,18 @@
     if (CFG.noLocal) {                        // Pages → διάβασε κατευθείαν από τη θυρίδα
       if (window.CBSync && CBSync.configured()) {
         CBSync.pullState().then(function (st) {
-          if (st && st.balance != null) { state = st; save(LS_STATE, state); renderAll(); }
+          if (st && st.balance != null) { state = st; saveState(); renderAll(); }
         }).catch(function () {});
       }
       return;
     }
     fetch(API_STATE, { credentials: 'same-origin' })
       .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (s) { if (s && s.balance != null) { state = s; save(LS_STATE, state); renderAll(); } })
+      .then(function (s) { if (s && s.balance != null) { state = s; saveState(); renderAll(); } })
       .catch(function () {
         if (window.CBSync && CBSync.configured()) {       // τοπικός server κλειστός → διάβασε από θυρίδα
           CBSync.pullState().then(function (st) {
-            if (st && st.balance != null) { state = st; save(LS_STATE, state); renderAll(); }
+            if (st && st.balance != null) { state = st; saveState(); renderAll(); }
           }).catch(function () {});
         }
       });
@@ -374,7 +407,11 @@
       if (!m || !window.CBSync) return;
       var creds = CBSync.parsePayload(decodeURIComponent(m[1]));
       if (creds) {
-        CBSync.setCreds(creds);
+        if (!CBSync.setCreds(creds)) {
+          // ο browser δεν άφησε να γραφτεί → ΜΗΝ πεις «συνδέθηκε» και ΜΗΝ σβήσεις το κλείδωμα
+          if (window.showAlert) showAlert('Ο browser δεν επιτρέπει αποθήκευση σε αυτό το κινητό, οπότε η σύνδεση δεν ολοκληρώθηκε.\n\nΆνοιξε τη σελίδα σε κανονικό παράθυρο (όχι ανώνυμη περιήγηση) και ξανασκάναρε το QR.', { title: '❌ Σύνδεση κινητού' });
+          return;
+        }
         // Νέα σύνδεση από το QR του υπολογιστή = μηδενισμός κλειδώματος (μόνος τρόπος reset PIN/δαχτυλικού).
         if (window.CBLock) CBLock.clearAll();
         history.replaceState(null, '', location.pathname + location.search);
