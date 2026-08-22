@@ -58,10 +58,14 @@
   // ── περιθώριο χρόνου (πότε ξανακλειδώνει) ──────────────────────────────────────
   // Ξανακλειδώνει ΜΟΝΟ αν λείψεις πάνω από «grace» λεπτά (ή στο φρέσκο άνοιγμα).
   // Γρήγορη εναλλαγή εφαρμογής & επιστροφή → δεν ενοχλεί. grace=0 → άμεσα (κάθε φορά).
-  function getGrace() { var v = parseInt(localStorage.getItem(LS_GRACE), 10); return isNaN(v) ? DEFAULT_GRACE : Math.max(0, v); }
+  // ⚠️ ΠΟΤΕ γυμνό localStorage: σε browser που μπλοκάρει την αποθήκη (ιδιωτική περιήγηση,
+  // πολιτική εταιρίας, «αποκλεισμός δεδομένων ιστότοπου») το getItem ΠΕΤΑΕΙ — και μια
+  // ανεπιτήρητη εξαίρεση εδώ σκότωνε την οθόνη κλειδώματος/ρυθμίσεων χωρίς μήνυμα.
+  function lsNum(key, dflt) { try { var v = parseInt(localStorage.getItem(key), 10); return isNaN(v) ? dflt : v; } catch (e) { return dflt; } }
+  function getGrace() { return Math.max(0, lsNum(LS_GRACE, DEFAULT_GRACE)); }
   function setGrace(min) { try { localStorage.setItem(LS_GRACE, String(Math.max(0, parseInt(min, 10) || 0))); } catch (e) {} }
   function stampSeen() { try { localStorage.setItem(LS_SEEN, String(Date.now())); } catch (e) {} }
-  function getSeen() { var v = parseInt(localStorage.getItem(LS_SEEN), 10); return isNaN(v) ? 0 : v; }
+  function getSeen() { return lsNum(LS_SEEN, 0); }
   function shouldLock() { return isEnabled() && (Date.now() - getSeen()) > getGrace() * 60000; }
 
   // ── δαχτυλικό (WebAuthn) ───────────────────────────────────────────────────────

@@ -336,6 +336,19 @@
     }
   }
 
+  /* Ποιες από τις κινήσεις που στείλαμε τις επιβεβαίωσε ο υπολογιστής.
+     Ο πίνακας `synced_uids` γίνεται πρώτα «λεξικό» ώστε ο έλεγχος να είναι άμεσος. */
+  function ackedUids(authState, sent) {
+    if (!authState || !authState.synced_uids) return [];
+    var confirmed = {};
+    authState.synced_uids.forEach(function (uid) { confirmed[uid] = 1; });
+    var out = [];
+    sent.forEach(function (op) {
+      if (confirmed[op.uid]) out.push(op.uid);
+    });
+    return out;
+  }
+
   function trySyncMailbox(sending) {
     if (!(window.CBSync && CBSync.configured())) { syncing = false; renderSync(); return; }
     lastVia = 'mailbox';
@@ -344,12 +357,7 @@
       (r.uploaded || []).forEach(function (u) { uploadedRemote[u] = 1; });
       return CBSync.pullState();
     }).then(function (st) {
-      var acked = [];
-      if (st && st.synced_uids) {
-        var setu = {}; st.synced_uids.forEach(function (u) { setu[u] = 1; });
-        acked = sending.filter(function (o) { return setu[o.uid]; }).map(function (o) { return o.uid; });
-      }
-      ackAndAdopt(st, acked);
+      ackAndAdopt(st, ackedUids(st, sending));
       syncing = false; renderAll();
     }).catch(function () { syncing = false; renderSync(); });
   }
@@ -424,8 +432,17 @@
   function setup() {
     ov = byId('m-ov');
     ov.addEventListener('click', closeSheets);
-    var closers = document.querySelectorAll('[data-close]'); for (var i = 0; i < closers.length; i++) closers[i].addEventListener('click', closeSheets);
-    var tiles = document.querySelectorAll('[data-sheet]'); for (var j = 0; j < tiles.length; j++) (function (b) { b.addEventListener('click', function () { openSheet(b.dataset.sheet); }); })(tiles[j]);
+    var closers = document.querySelectorAll('[data-close]');
+    for (var i = 0; i < closers.length; i++) {
+      closers[i].addEventListener('click', closeSheets);
+    }
+
+    // Κάθε πλακίδιο ανοίγει το δικό του φύλλο. Το `forEach` δίνει σε κάθε επανάληψη
+    // δικό της `tile`, οπότε δεν χρειάζεται το παλιό περιτύλιγμα-κλείσιμο.
+    function wireTile(tile) {
+      tile.addEventListener('click', function () { openSheet(tile.dataset.sheet); });
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('[data-sheet]'), wireTile);
 
     // 👁 peek: το υπόλοιπο φαίνεται ΜΟΝΟ όσο κρατάς πατημένο (ματάκι Ή ποσό)
     function setPeek(on) { peeking = on; renderBalance(); }
@@ -485,7 +502,14 @@
         list.appendChild(d);
       });
     }
-    addb.addEventListener('click', function () { var v = (input.value || '').trim(); if (!v) return; notes.unshift(v); persist(); input.value = ''; render(); });
+    addb.addEventListener('click', function () {
+      var text = (input.value || '').trim();
+      if (!text) return;
+      notes.unshift(text);
+      persist();
+      input.value = '';
+      render();
+    });
     render();
   }
 
@@ -493,7 +517,11 @@
 
   function boot() {
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () { navigator.serviceWorker.register(SW_PATH, { scope: SW_SCOPE }).catch(function () {}); });
+      window.addEventListener('load', function () {
+        // Αν η εγγραφή αποτύχει, η εφαρμογή δουλεύει κανονικά — χάνει μόνο το offline.
+        navigator.serviceWorker.register(SW_PATH, { scope: SW_SCOPE })
+          .catch(function () { });
+      });
     }
     handleConnectHash();                                   // QR/σύνδεσμος μπορεί να βάλει το κλειδί
     var hasKey = !!(window.CBSync && CBSync.getCreds && CBSync.getCreds());
