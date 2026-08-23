@@ -129,6 +129,9 @@ body{font-family:'Segoe UI',system-ui,Roboto,Arial,sans-serif;background:var(--b
 .m-fld label{display:block;font-size:12.5px;font-weight:700;color:var(--grey);margin-bottom:6px}
 .m-fld input,.m-fld select{width:100%;padding:13px 12px;border:1px solid var(--line);border-radius:12px;font:inherit;background:#fff}
 .m-fld input{font-weight:700;font-size:16px}
+/* αέρας στις γραμμές της ανοιχτής λίστας (ΘΟ1) — η σελίδα δεν φορτώνει το main.css.
+   Στο Android δεν φαίνεται (βάζει δική του οθόνη), μετράει όταν ανοίξει σε υπολογιστή. */
+.m-fld select option{padding:6px 10px}
 .m-hint{font-size:11.5px;color:var(--grey);margin-top:5px}
 .m-note{background:var(--orange-l);border:1px solid #f3cfb3;border-radius:12px;padding:11px 13px;font-size:12.5px;color:#7a4a22;margin-bottom:14px}
 .m-tog{display:flex;gap:8px}
