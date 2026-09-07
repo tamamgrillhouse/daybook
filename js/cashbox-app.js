@@ -96,7 +96,9 @@
     var sign = e.direction === 'in' ? '+' : '−';
     var ss = itemState(e);
     var div = document.createElement('div'); div.className = 'm-it';
-    div.innerHTML = '<span class="emo">' + emo + '</span>'
+    // ΚΣ1: και το εικονίδιο περνά από `esc` — είναι το `category_icon`, πεδίο που
+    // γράφει ο ιδιοκτήτης, δίπλα σε δύο τιμές που ΗΔΗ προστατεύονταν στην ίδια γραμμή.
+    div.innerHTML = '<span class="emo">' + esc(emo) + '</span>'
       + '<div class="tx"><div class="t1">' + esc(title) + ' <span class="bz">' + biz + '</span></div>'
       + '<div class="t2">' + esc(sub) + '</div></div>'
       + '<div class="meta"><div class="amt' + (e.direction === 'in' ? ' inn' : '') + '">' + sign + euro(e.amount) + '</div>'
