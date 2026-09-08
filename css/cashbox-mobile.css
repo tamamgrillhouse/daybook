@@ -82,7 +82,7 @@ body{font-family:'Segoe UI',system-ui,Roboto,Arial,sans-serif;background:var(--b
 .m-it .acts button{border:1px solid var(--line);background:#fff;border-radius:9px;width:34px;height:34px;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;justify-content:center}
 .bz{font-size:11px}
 /* σηματάκι κατάστασης ανά κίνηση: ✓ έφτασε / 📮 στη θυρίδα / ⏳ αναμονή */
-.st{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:999px;white-space:nowrap}
+.st{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:800;padding:2px 7px;border-radius:999px;white-space:nowrap}
 .st.ok{background:var(--green-l);color:var(--green)}
 .st.box{background:#fdf4e0;color:#c98a14}
 .st.wait{background:var(--grey-l);color:var(--grey)}
