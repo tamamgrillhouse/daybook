@@ -188,13 +188,19 @@
     if (queue.length >= QUEUE_WARN) {
       // τόσες αστάλτες κινήσεις δεν είναι «περιμένω δίκτυο» — κάτι έχει χαλάσει στη σύνδεση
       emo = '⚠️'; warn = true;
-      full = queue.length + ' κινήσεις δεν έχουν σταλεί — κάτι δεν πάει καλά με τη σύνδεση. Άνοιξε Ρυθμίσεις → Δοκιμή.';
+      full = queue.length + (queue.length === 1 ? ' κίνηση δεν έχει σταλεί' : ' κινήσεις δεν έχουν σταλεί') +
+             ' — κάτι δεν πάει καλά με τη σύνδεση. Άνοιξε Ρυθμίσεις → Δοκιμή.';
     } else if (!navigator.onLine) {
       emo = '📴'; warn = true; full = 'Χωρίς δίκτυο — θα συγχρονιστεί μόλις βρεις internet';
     } else if (queue.length && mailbox) {
-      emo = '📮'; warn = true; full = queue.length + ' κινήσεις στη θυρίδα — περιμένουν τον υπολογιστή';
+      emo = '📮'; warn = true;
+      full = queue.length + (queue.length === 1
+        ? ' κίνηση στη θυρίδα — περιμένει τον υπολογιστή'
+        : ' κινήσεις στη θυρίδα — περιμένουν τον υπολογιστή');
     } else if (queue.length) {
-      emo = '⏳'; warn = true; full = queue.length + ' αλλαγές περιμένουν συγχρονισμό';
+      emo = '⏳'; warn = true;
+      full = queue.length + (queue.length === 1
+        ? ' αλλαγή περιμένει συγχρονισμό' : ' αλλαγές περιμένουν συγχρονισμό');
     } else {
       emo = '✓'; var t = hhmm(load(LS_LASTSYNC, 0));
       full = 'Όλα συγχρονισμένα' + (t ? ' · τελευταίος συγχρονισμός ' + t : '');
