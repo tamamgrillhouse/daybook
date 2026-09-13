@@ -1,4 +1,4 @@
-var CACHE = 'cashbox-pages-21c34c7fcb';
+var CACHE = 'cashbox-pages-a6295d6522';
 var SHELL = ['./','./index.html','./connect.html','./manifest.webmanifest',
   './css/cashbox-mobile.css','./js/cashbox-app.js','./js/cashbox-sync.js','./js/cashbox-lock.js','./js/confirm.js',
   './icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png'];
