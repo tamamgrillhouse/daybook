@@ -31,7 +31,16 @@
     });
   }
   function jload(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
-  function jsave(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  /* ΛΚ2 — ΕΠΕΣΤΡΕΨΕ αν το γράψιμο πέτυχε. Σε browser με μπλοκαρισμένη αποθήκευση
+     (ανώνυμη περιήγηση, πολιτική συσκευής, «αποκλεισμός δεδομένων ιστότοπου») το
+     `localStorage.setItem` ΠΕΤΑΕΙ. Με σιωπηλό catch, η οθόνη έλεγε «✓ Ο κωδικός
+     αποθηκεύτηκε. Το κλείδωμα είναι ενεργό.» ενώ `isEnabled()` ήταν **false** — και
+     δίπλα, η ίδια οθόνη έγραφε «Δεν έχει οριστεί ακόμα». Ο αδελφός `cashbox-sync.js`
+     (`setCreds`) το είχε ήδη μάθει· το κλείδωμα όχι. Εδώ κρίνεται ΠΟΙΟΣ ανοίγει το ταμείο. */
+  function jsave(k, v) {
+    try { localStorage.setItem(k, JSON.stringify(v)); return true; }
+    catch (e) { return false; }
+  }
 
   // ── κατάσταση κλειδώματος ──────────────────────────────────────────────────────
   function hasPin() { var p = jload(LS_PIN); return !!(p && p.salt && p.hash); }
@@ -40,7 +49,12 @@
   function setPin(pin) {
     if (!subtle) return Promise.reject(new Error('no_crypto'));
     var salt = bytesToB64url(rand(16));
-    return sha256hex(salt + ':' + pin).then(function (h) { jsave(LS_PIN, { salt: salt, hash: h }); stampSeen(); return true; });
+    return sha256hex(salt + ':' + pin).then(function (h) {
+      if (!jsave(LS_PIN, { salt: salt, hash: h })) {
+        throw new Error('storage_blocked');   // ΛΚ2: μη λες «αποθηκεύτηκε» σε γράψιμο που απέτυχε
+      }
+      stampSeen(); return true;
+    });
   }
   function verifyPin(pin) {
     var p = jload(LS_PIN); if (!p || !subtle) return Promise.resolve(false);
@@ -63,7 +77,11 @@
   // ανεπιτήρητη εξαίρεση εδώ σκότωνε την οθόνη κλειδώματος/ρυθμίσεων χωρίς μήνυμα.
   function lsNum(key, dflt) { try { var v = parseInt(localStorage.getItem(key), 10); return isNaN(v) ? dflt : v; } catch (e) { return dflt; } }
   function getGrace() { return Math.max(0, lsNum(LS_GRACE, DEFAULT_GRACE)); }
-  function setGrace(min) { try { localStorage.setItem(LS_GRACE, String(Math.max(0, parseInt(min, 10) || 0))); } catch (e) {} }
+  // ΛΚ2 — ίδιο με το `jsave`: λέει αν όντως γράφτηκε, ώστε το «✓ Αποθηκεύτηκε» να μην είναι ψέμα.
+  function setGrace(min) {
+    try { localStorage.setItem(LS_GRACE, String(Math.max(0, parseInt(min, 10) || 0))); return true; }
+    catch (e) { return false; }
+  }
   function stampSeen() { try { localStorage.setItem(LS_SEEN, String(Date.now())); } catch (e) {} }
   function getSeen() { return lsNum(LS_SEEN, 0); }
   function shouldLock() { return isEnabled() && (Date.now() - getSeen()) > getGrace() * 60000; }
@@ -434,6 +452,11 @@
           el.querySelector('#cbl-set-pinbox').style.display = 'none';
           renderPinRow(); renderGraceRow(); renderFpRow();
           note('✓ Ο κωδικός αποθηκεύτηκε. Το κλείδωμα είναι ενεργό.', true);
+        }).catch(function () {
+          // ΛΚ2 — το γράψιμο απέτυχε· ΠΟΤΕ «✓ ενεργό» πάνω από αυτό.
+          renderPinRow();
+          note('⚠️ Το κινητό δεν επιτρέπει αποθήκευση — το κλείδωμα ΔΕΝ ενεργοποιήθηκε. '
+               + 'Δοκίμασε εκτός ανώνυμης περιήγησης.');
         });
       });
     }
@@ -467,7 +490,10 @@
         + '<div style="font-size:12px;color:#6b7280;margin:2px 0 8px">Όταν φεύγεις από την εφαρμογή και γυρνάς — γρήγορη εναλλαγή δεν σε ενοχλεί.</div>'
         + '<select id="cbl-grace" style="width:100%;padding:12px;border:1px solid #e6e8ec;border-radius:12px;font:inherit;background:#fff">' + sel + '</select></div>';
       var s = el.querySelector('#cbl-grace');
-      if (s) s.addEventListener('change', function () { setGrace(s.value); note('✓ Αποθηκεύτηκε.', true); });
+      if (s) s.addEventListener('change', function () {
+        if (setGrace(s.value)) { note('✓ Αποθηκεύτηκε.', true); }
+        else { note('⚠️ Το κινητό δεν επιτρέπει αποθήκευση — η ρύθμιση ΔΕΝ κρατήθηκε.'); }
+      });
     }
 
     function renderFpRow() {

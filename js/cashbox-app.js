@@ -81,10 +81,18 @@
   }
   // Κατάσταση μιας κίνησης: ✓ έφτασε στον υπολογιστή / 📮 στη θυρίδα / ⏳ αναμονή.
   // Προσωρινό id (tmp_…) = δεν έχει φτάσει ακόμα· πραγματικό (αριθμός) = έφτασε.
+  /* ΛΚ2 — «📮 στη θυρίδα» ΜΟΝΟ αν η κίνηση ΟΝΤΩΣ ανέβηκε.
+     Πριν, η ετικέτα έβγαινε επειδή «υπάρχουν στοιχεία θυρίδας και έχω ίντερνετ» — χωρίς να
+     κοιτάξει καθόλου αν το ανέβασμα πέτυχε. Με ληγμένο/ανακληθέν κλειδί GitHub η θυρίδα
+     απαντούσε 401, το `pushOps` γύριζε `{uploaded: [], error: 'auth'}`, ΚΑΝΕΙΣ δεν διάβαζε
+     το `error`, και το κινητό έλεγε για εβδομάδες «περιμένει τον υπολογιστή» ενώ δεν είχε
+     φύγει τίποτα. Το πρώτο πραγματικό σήμα ερχόταν στις 200 κινήσεις (~μία εβδομάδα δουλειάς). */
   function itemState(e) {
     var pending = (typeof e.id === 'string' && e.id.indexOf('tmp_') === 0);
     if (!pending) return { cls: 'ok', txt: '✓ έφτασε' };
-    if (navigator.onLine && window.CBSync && CBSync.configured()) return { cls: 'box', txt: '📮 στη θυρίδα' };
+    var uid = (typeof e.id === 'string') ? e.id.slice(4) : '';
+    if (uid && uploadedRemote[uid]) return { cls: 'box', txt: '📮 στη θυρίδα' };
+    if (syncError) return { cls: 'wait', txt: '⚠️ δεν στάλθηκε' };
     return { cls: 'wait', txt: '⏳ αναμονή' };
   }
   function buildRow(e) {
@@ -192,6 +200,14 @@
              ' — κάτι δεν πάει καλά με τη σύνδεση. Άνοιξε Ρυθμίσεις → Δοκιμή.';
     } else if (!navigator.onLine) {
       emo = '📴'; warn = true; full = 'Χωρίς δίκτυο — θα συγχρονιστεί μόλις βρεις internet';
+    } else if (queue.length && mailbox && syncError) {
+      // ΛΚ2 — η θυρίδα ΔΕΝ δέχτηκε. Το λέμε αμέσως, όχι στις 200 κινήσεις.
+      emo = '⚠️'; warn = true;
+      full = (syncError === 'auth'
+        ? 'Η θυρίδα δεν δέχεται το κλειδί — τίποτα δεν έχει σταλεί. Ρυθμίσεις → Δοκιμή.'
+        : (syncError === 'repo_not_found'
+           ? 'Δεν βρίσκω τη θυρίδα — τίποτα δεν έχει σταλεί. Ρυθμίσεις → Δοκιμή.'
+           : 'Η αποστολή στη θυρίδα απέτυχε — τίποτα δεν έχει σταλεί. Ρυθμίσεις → Δοκιμή.'));
     } else if (queue.length && mailbox) {
       emo = '📮'; warn = true;
       full = queue.length + (queue.length === 1
@@ -236,8 +252,23 @@
     if (!save(LS_QUEUE, queue)) storageFull();
   }
 
+  /* ΛΚ2 — ΠΟΤΕ «κλείσε το φύλλο» σε ποσό που δεν διαβάστηκε.
+     Το κλείσιμο του φύλλου είναι το ΜΟΝΟ σήμα επιτυχίας της εφαρμογής, οπότε «αποθηκεύτηκε»
+     και «χάθηκε εντελώς» έμοιαζαν ίδια: κενό κουτί, «0», αρνητικό ή κείμενο έκλειναν το
+     φύλλο και δεν κατέγραφαν τίποτα. Το πεδίο δεν έχει `required` και δεν είναι σε `<form>`
+     (το κουμπί είναι `type="button"`), άρα κανένας έλεγχος του browser δεν τρέχει ποτέ. */
+  function badAmount(id) {
+    var el = byId(id);
+    if (el) { try { el.focus(); } catch (e) {} }
+    if (typeof window.showAlert === 'function') {
+      window.showAlert('Δεν κατάλαβα το ποσό.\n\nΓράψε έναν αριθμό μεγαλύτερο από το μηδέν '
+        + '— π.χ. 12,50', { title: '⚠️ Έλεγξε το ποσό' });
+    }
+  }
+
   function addPay() {
-    var amt = parseAmt(byId('pay-amount').value); if (!(amt > 0)) { closeSheets(); return; }
+    var amt = parseAmt(byId('pay-amount').value);
+    if (!(amt > 0)) { badAmount('pay-amount'); return; }
     var day = byId('pay-day').value || null;
     var catRaw = byId('pay-cat').value; var cat = catRaw ? Number(catRaw) : null;
     var biz = (document.querySelector('input[name=pay-biz]:checked') || {}).value === '1';
@@ -251,7 +282,8 @@
     renderAll(); closeSheets(); trySync();
   }
   function addDraw() {
-    var amt = parseAmt(byId('draw-amount').value); if (!(amt > 0)) { closeSheets(); return; }
+    var amt = parseAmt(byId('draw-amount').value);
+    if (!(amt > 0)) { badAmount('draw-amount'); return; }
     var biz = (document.querySelector('input[name=draw-biz]:checked') || {}).value === '1';
     var desc = byId('draw-desc').value || '';
     var u = uid();
@@ -290,7 +322,8 @@
   function saveEdit() {
     var item = (state.recent || []).filter(function (x) { return x.id === editId; })[0];
     if (!item) { closeSheets(); return; }
-    var amt = parseAmt(byId('edit-amount').value); if (!(amt > 0)) { closeSheets(); return; }
+    var amt = parseAmt(byId('edit-amount').value);
+    if (!(amt > 0)) { badAmount('edit-amount'); return; }
     var catRaw = byId('edit-cat').value; var cat = catRaw ? Number(catRaw) : null;
     var biz = (document.querySelector('input[name=edit-biz]:checked') || {}).value === '1';
     var desc = byId('edit-desc').value || '';
@@ -329,6 +362,9 @@
   // (2) θυρίδα GitHub (όταν ο υπολογιστής είναι ΚΛΕΙΣΤΟΣ) — μέσω window.CBSync.
   var syncing = false;
   var uploadedRemote = {};        // uid → 1 : ήδη ανεβασμένο στη θυρίδα (μην ξανα-στείλεις)
+  // ΛΚ2 — γιατί ΔΕΝ ανέβηκε ο τελευταίος γύρος ('auth' | 'repo_not_found' | 'http_NNN' | …).
+  // Χωρίς αυτό, «δεν έφυγε τίποτα» και «περιμένει τον υπολογιστή» ήταν το ίδιο μήνυμα.
+  var syncError = '';
   var lastVia = '';               // 'local' | 'mailbox' | '' → για το σηματάκι
 
   function ackAndAdopt(authState, ackUids) {
@@ -363,6 +399,9 @@
     var toSend = sending.filter(function (o) { return !uploadedRemote[o.uid]; });
     CBSync.pushOps(toSend).then(function (r) {
       (r.uploaded || []).forEach(function (u) { uploadedRemote[u] = 1; });
+      // ΛΚ2 — ΚΡΑΤΑ ΤΟΝ ΛΟΓΟ. Το `pushOps` γυρίζει ακριβή αιτία ('auth' = λάθος/ληγμένο
+      // κλειδί, 'repo_not_found', 'http_NNN', 'offline') και κανείς δεν τη διάβαζε ποτέ.
+      syncError = (toSend.length && !(r.uploaded || []).length) ? (r.error || 'unknown') : '';
       return CBSync.pullState();
     }).then(function (st) {
       ackAndAdopt(st, ackedUids(st, sending));

@@ -162,8 +162,13 @@
     var c = getCreds();
     if (!c) return Promise.resolve(null);
     return gh('GET', 'state.enc').then(function (g) {
-      if (g.status === 404 || !g.json || !g.json.content) return null;
+      // ΛΚ2 — Ο έλεγχος ταυτότητας ΠΡΩΤΑ. Το σώμα ενός 401 της GitHub είναι
+      // `{"message":"Bad credentials"}` — δεν έχει `content`, οπότε ο παλιός έλεγχος
+      // «δεν έχει content» επέστρεφε `null` μία γραμμή νωρίτερα και ο κλάδος από κάτω
+      // ήταν ΑΠΡΟΣΙΤΟΣ: «ληγμένο κλειδί» και «δεν έχει γραφτεί κατάσταση ακόμη»
+      // κατέληγαν στην ίδια, σιωπηλή απάντηση.
       if (g.status === 401 || g.status === 403) throw new Error('auth');
+      if (g.status === 404 || !g.json || !g.json.content) return null;
       var encAscii = atob(String(g.json.content).replace(/\s/g, ''));
       return fernetDecrypt(c.key, encAscii).then(function (txt) { return JSON.parse(txt); });
     });

@@ -1,9 +1,16 @@
 /* 📱 Κοινό CSS για τις mobile οθόνες του Ταμείου (mobile / categories / settings) */
+/* ⚠️ ΛΚ2/ΗΛ1 — ΜΕΤΡΗΜΕΝΗ αντίθεση, όχι εκτίμηση με το μάτι. Το ταμείο διαβάζεται με το
+   κινητό στο χέρι, μέσα σε μαγαζί, συχνά με φως από έξω. Μετρήθηκαν στη ζωντανή σελίδα:
+   λευκό πάνω στο πορτοκαλί κουμπί 3,05 · λευκό στην πορτοκαλί κορυφή 2,50 · λευκό στο
+   κόκκινο πλακίδιο 4,31 — όλα κάτω από το όριο 4,5. Τα ίδια χρώματα βάφουν και το
+   αναδυόμενο «σίγουρα;», δηλαδή τη στιγμή της επιβεβαίωσης.
+   ✅ Η κλειδωμένη λύση του ιδιοκτήτη: ΣΚΟΥΡΟ μελάνι στο ΙΔΙΟ πορτοκαλί (5,08) — και για
+   τα γεμίσματα, η 700άρα απόχρωση του ίδιου χρώματος. */
 :root{
   --orange:#e8722c; --orange-d:#cf5f1e; --orange-l:#fff3eb;
-  --green:#2e9e5b; --green-l:#e9f7ee; --red:#d9453c; --red-l:#fdecec;
-  --blue:#3a7bd5; --blue-l:#eaf1fc; --purple:#7a52c9;
-  --grey:#6b7280; --grey-l:#f3f4f6; --ink:#1f2430; --line:#e6e8ec; --bg:#f5f6f8;
+  --green:#15803d; --green-l:#e9f7ee; --red:#b91c1c; --red-l:#fdecec;
+  --blue:#1d4ed8; --blue-l:#eaf1fc; --purple:#7a52c9;
+  --grey:#565d69; --grey-l:#f3f4f6; --ink:#1f2430; --line:#e6e8ec; --bg:#f5f6f8;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:'Segoe UI',system-ui,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45;
@@ -13,7 +20,7 @@ body{font-family:'Segoe UI',system-ui,Roboto,Arial,sans-serif;background:var(--b
 #app-real,#app-decoy{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
 
 /* shared buttons (also used by confirm.js popup) */
-.btn-primary{background:var(--orange);color:#fff;border:0;font:inherit;font-weight:800;border-radius:12px;
+.btn-primary{background:var(--orange);color:var(--ink);border:0;font:inherit;font-weight:800;border-radius:12px;
   padding:13px 16px;cursor:pointer;min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
 .btn-secondary{background:#fff;color:var(--ink);border:1px solid var(--line);font:inherit;font-weight:700;
   border-radius:12px;padding:13px 16px;cursor:pointer;min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
@@ -21,22 +28,24 @@ body{font-family:'Segoe UI',system-ui,Roboto,Arial,sans-serif;background:var(--b
   border-radius:12px;padding:13px 16px;cursor:pointer;min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
 
 /* top bar */
-.m-top{background:linear-gradient(135deg,#f08a3d,var(--orange));color:#fff;padding:20px 18px 22px;
+/* Σκούρο μελάνι στο ίδιο πορτοκαλί: 6,21 στην ανοιχτή άκρη, 5,08 στη σκούρα — αντί για
+   2,50 και 3,05 με λευκό. Το υπόλοιπο του ταμείου γράφεται ΕΔΩ. */
+.m-top{background:linear-gradient(135deg,#f08a3d,var(--orange));color:var(--ink);padding:20px 18px 22px;
   border-radius:0 0 22px 22px;box-shadow:0 4px 14px rgba(232,114,44,.25)}
 .m-top-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .m-title{font-weight:800;font-size:18px;display:flex;align-items:center;gap:10px}
 .m-tools{display:flex;gap:8px}
-.m-tools a{color:#fff;text-decoration:none;background:rgba(255,255,255,.18);width:38px;height:38px;
+.m-tools a{color:var(--ink);text-decoration:none;background:rgba(255,255,255,.38);width:38px;height:38px;
   border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:17px}
 /* κουμπί «πίσω» (Β: «← Πίσω») — στις υποσελίδες (Ρυθμίσεις/Κατηγορίες) */
-.m-back{display:inline-flex;align-items:center;gap:6px;color:#fff;text-decoration:none;background:rgba(255,255,255,.18);
+.m-back{display:inline-flex;align-items:center;gap:6px;color:var(--ink);text-decoration:none;background:rgba(255,255,255,.38);
   padding:9px 14px;border-radius:999px;font-weight:800;font-size:14px;cursor:pointer;flex:0 0 auto}
 .m-back span{font-size:17px;line-height:1}
 .m-bal-row{display:flex;align-items:center;gap:12px;margin-top:12px}
 /* το ποσό απλώνεται αριστερά· το ματάκι μένει ΚΑΡΦΩΜΕΝΟ δεξιά (δεν κουνιέται με μεγάλα ποσά) */
 .m-bal{flex:1 1 auto;min-width:0;font-size:36px;font-weight:800;letter-spacing:-.5px;min-height:43px;display:flex;align-items:center;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;user-select:none;-webkit-user-select:none;touch-action:none;cursor:pointer}
-.m-eye{background:rgba(255,255,255,.2);border:0;color:#fff;width:40px;height:40px;border-radius:12px;
+.m-eye{background:rgba(255,255,255,.4);border:0;color:var(--ink);width:40px;height:40px;border-radius:12px;
   font-size:18px;cursor:pointer;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
   user-select:none;-webkit-user-select:none;touch-action:none}
 .m-sub{font-size:12px;opacity:.9;margin-top:4px;letter-spacing:.3px}
