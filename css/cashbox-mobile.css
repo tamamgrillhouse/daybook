@@ -93,11 +93,12 @@ body{font-family:'Segoe UI',system-ui,Roboto,Arial,sans-serif;background:var(--b
 /* σηματάκι κατάστασης ανά κίνηση: ✓ έφτασε / 📮 στη θυρίδα / ⏳ αναμονή */
 .st{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:800;padding:2px 7px;border-radius:999px;white-space:nowrap}
 .st.ok{background:var(--green-l);color:var(--green)}
-.st.box{background:#fdf4e0;color:#c98a14}
+/* ΛΩ19 — μετρημένο: #c98a14 πάνω στο #fdf4e0 = 2,69 → #92400e = 6,48 */
+.st.box{background:#fdf4e0;color:#92400e}
 .st.wait{background:var(--grey-l);color:var(--grey)}
 /* κουμπί «Δες περισσότερες» + ιστορικό */
 .m-more{width:100%;margin-top:12px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px;
-  font:inherit;font-weight:800;font-size:13.5px;color:var(--orange-d);cursor:pointer;
+  font:inherit;font-weight:800;font-size:13.5px;color:#9a3412;cursor:pointer;   /* ΛΩ19: --orange-d σε λευκό = 3,96 → 7,31 */
   display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px}
 .m-more .chev{transition:transform .2s}
 .m-more.open .chev{transform:rotate(180deg)}
@@ -115,7 +116,9 @@ body{font-family:'Segoe UI',system-ui,Roboto,Arial,sans-serif;background:var(--b
 /* category rows */
 .m-crow{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
 .m-crow:last-child{border-bottom:0}
-.m-crow.off{opacity:.5}
+/* κρυμμένη κατηγορία: φόντο + γκρι γράμμα (6,40), ΟΧΙ opacity:.5 (έριχνε το κείμενο κάτω από 4,5) */
+.m-crow.off{background:#fafbfc}
+.m-crow.off .nm{color:var(--grey)}
 .m-crow .emo{font-size:20px;width:28px;text-align:center}
 .m-crow .nm{flex:1;font-weight:700;font-size:14px}
 .m-crow .tag{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;flex:0 0 auto}
@@ -153,12 +156,14 @@ body{font-family:'Segoe UI',system-ui,Roboto,Arial,sans-serif;background:var(--b
 .m-cnt{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:6px}
 .m-cnt-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 13px;border-bottom:1px solid var(--line)}
 .m-cnt-row:last-child{border-bottom:0}
-.m-cnt-row.closed{background:#fafbfc;color:#9aa0aa}
+/* ΛΩ19 — κλειστή μέρα: #9aa0aa = 2,54 (δεν διαβαζόταν) → --grey = 6,40. Το «κλειστή» το λέει
+   η λέξη «(ρεπό)» και το φόντο, όχι ένα γράμμα που δεν διαβάζεται. */
+.m-cnt-row.closed{background:#fafbfc;color:var(--grey)}
 .m-cnt-row .d{font-weight:700;font-size:14px}
 .m-cnt-row .ex{display:inline-block;font-size:11px;color:var(--red);background:var(--red-l);padding:2px 7px;border-radius:6px;margin-top:3px;font-weight:700}
 .m-cin{width:108px;text-align:right;font-weight:800;font-size:16px;padding:9px 10px;border:1.5px solid var(--line);border-radius:10px;font:inherit}
 .m-cin:focus{border-color:var(--orange);outline:none}
-.m-dash{color:#9aa0aa}
+.m-dash{color:var(--grey)}
 .m-sum{background:var(--grey-l);border-radius:12px;padding:12px 14px;font-size:13.5px;margin:12px 0}
 .m-sum .r{display:flex;justify-content:space-between;padding:3px 0}
 .m-sum .r b{font-weight:800}

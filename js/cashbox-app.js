@@ -31,21 +31,33 @@
     if (typeof window.showAlert === 'function') {
       window.showAlert('Ο χώρος του κινητού γέμισε και η κίνηση ΔΕΝ αποθηκεύτηκε.\n\n'
         + 'Σύνδεσε το κινητό στο ίντερνετ για να σταλούν οι κινήσεις που περιμένουν. '
-        + 'Μόλις σταλούν, ο χώρος αδειάζει μόνος του.', { title: '⚠️ Γέμισε ο χώρος' });
+        + 'Μόλις σταλούν, ο χώρος αδειάζει μόνος του.', null, { title: '⚠️ Γέμισε ο χώρος' });
     }
   }
   // κάθε γράψιμο του state περνά από εδώ: κόβει το ιστορικό οθόνης + φωνάζει αν γέμισε
   function saveState() {
     if (state && state.recent && state.recent.length > RECENT_KEEP) state.recent = state.recent.slice(0, RECENT_KEEP);
+    // 🔒 ΛΩ19 — ένα «κρυμμένο» στιγμιότυπο (Λειτουργία Πανικού: ποσά = null) ΔΕΝ γράφεται
+    // ποτέ πάνω στο πραγματικό αντίγραφο της συσκευής· ζει μόνο στη μνήμη αυτής της οθόνης.
+    if (state && state.masked) return;
     if (!save(LS_STATE, state)) storageFull();
   }
+  // Απάντηση του υπολογιστή/θυρίδας που αξίζει να υιοθετηθεί: κανονική (με υπόλοιπο)
+  // Ή κρυμμένη από Λειτουργία Πανικού (υπόλοιπο null, αλλά `masked: true`).
+  function usable(st) { return !!(st && (st.balance != null || st.masked)); }
 
   function emptyState() { return { balance: 0, settings: {}, week: { rows: [], totals: {} }, picker: { days: [], default: '' }, categories: [], recent: [], closed_days: [], stats: {} }; }
 
+  var initial = null;
+  try { initial = JSON.parse(document.getElementById('cb-initial').textContent); } catch (e) { initial = null; }
   var state = load(LS_STATE, null);
   var queue = load(LS_QUEUE, []);
-  if (!state) {
-    try { state = JSON.parse(document.getElementById('cb-initial').textContent); } catch (e) { state = emptyState(); }
+  if (initial && initial.masked) {
+    // 🔒 ΛΩ19 — η σελίδα σερβιρίστηκε σε Λειτουργία Πανικού: ΜΗΝ δείξεις το αποθηκευμένο
+    // (πραγματικό) αντίγραφο αυτής της συσκευής — δείξε ό,τι έστειλε ο διακομιστής (•••).
+    state = initial;
+  } else if (!state) {
+    state = initial || emptyState();
     saveState();
   }
 
@@ -57,7 +69,9 @@
   function todayIso() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
   function esc(s) { return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function fmtDate(iso) { if (!iso) return ''; var p = String(iso).split('-'); return p.length === 3 ? (p[2] + '-' + p[1] + '-' + p[0]) : iso; }
+  // 🔒 ΛΩ19 — `null` = ποσό που ο διακομιστής ΚΡΥΒΕΙ (Λειτουργία Πανικού) → «•••», ποτέ 0,00 €
   function euro(n) {
+    if (n === null) return '•••';
     n = round2(n); var neg = n < 0; n = Math.abs(n);
     var s = n.toFixed(2).split('.'); s[0] = s[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     return (neg ? '−' : '') + s[0] + ',' + s[1] + ' €';
@@ -70,6 +84,8 @@
     var n = parseFloat(s); return isNaN(n) ? 0 : round2(n);
   }
   function byId(id) { return document.getElementById(id); }
+  // Μετακίνηση ποσού· κρυμμένο (null) μένει κρυμμένο — ποτέ «null − 5 = −5».
+  function shift(v, d) { return v === null ? null : round2(v + d); }
 
   // ── rendering ─────────────────────────────────────────────────────────────────
   // Το υπόλοιπο φαίνεται ΜΟΝΟ όσο κρατάς πατημένο (peek) — αλλιώς κρυμμένο.
@@ -166,6 +182,7 @@
     });
   }
   function recomputeWeekCounted() {
+    if (state.masked) return;   // κρυμμένο σύνολο μένει κρυμμένο
     var t = 0; (state.week.rows || []).forEach(function (r) { if (r.counted != null) t += Number(r.counted); });
     state.week.totals.counted = round2(t);
   }
@@ -180,8 +197,8 @@
     });
     var t = state.week.totals || {};
     byId('count-sum').innerHTML =
-      '<div class="r"><span>💰 Εισπράξεις εβδομάδας</span><b>' + euro(t.counted || 0) + '</b></div>'
-      + '<div class="r"><span>💸 Πληρωμές εβδομάδας</span><b>' + (t.out ? ('−' + euro(t.out)) : '—') + '</b></div>'
+      '<div class="r"><span>💰 Εισπράξεις εβδομάδας</span><b>' + euro(t.counted === null ? null : (t.counted || 0)) + '</b></div>'
+      + '<div class="r"><span>💸 Πληρωμές εβδομάδας</span><b>' + (t.out === null ? euro(null) : (t.out ? ('−' + euro(t.out)) : '—')) + '</b></div>'
       + '<div class="r"><span>👜 Υπόλοιπο ταμείου</span><b>' + euro(state.balance) + '</b></div>';
   }
   function hhmm(ms) {
@@ -262,7 +279,7 @@
     if (el) { try { el.focus(); } catch (e) {} }
     if (typeof window.showAlert === 'function') {
       window.showAlert('Δεν κατάλαβα το ποσό.\n\nΓράψε έναν αριθμό μεγαλύτερο από το μηδέν '
-        + '— π.χ. 12,50', { title: '⚠️ Έλεγξε το ποσό' });
+        + '— π.χ. 12,50', null, { title: '⚠️ Έλεγξε το ποσό' });
     }
   }
 
@@ -275,7 +292,7 @@
     var desc = byId('pay-desc').value || '';
     var u = uid();
     enqueue({ uid: u, type: 'pay', amount: amt, category_id: cat, is_business: biz, source_day: day, description: desc });
-    state.balance = round2(state.balance - amt);
+    state.balance = shift(state.balance, -amt);
     var c = (state.categories || []).filter(function (x) { return String(x.id) === String(cat); })[0];
     state.recent.unshift({ id: 'tmp_' + u, entry_date: todayIso(), source_day: day, amount: amt, direction: 'out', category_id: cat, category_name: c ? c.name : null, category_icon: c ? c.icon : null, description: desc, is_business: biz, withdrawal: false });
     saveState(); byId('pay-amount').value = ''; byId('pay-desc').value = '';
@@ -288,7 +305,7 @@
     var desc = byId('draw-desc').value || '';
     var u = uid();
     enqueue({ uid: u, type: 'withdraw', amount: amt, is_business: biz, description: desc });
-    state.balance = round2(state.balance - amt);
+    state.balance = shift(state.balance, -amt);
     state.recent.unshift({ id: 'tmp_' + u, entry_date: todayIso(), source_day: null, amount: amt, direction: 'out', category_id: null, category_name: null, category_icon: null, description: desc, is_business: biz, withdrawal: true });
     saveState(); byId('draw-amount').value = ''; byId('draw-desc').value = '';
     renderAll(); closeSheets(); trySync();
@@ -301,7 +318,7 @@
       var old = row && row.counted != null ? Number(row.counted) : 0;
       if (val === old) continue;
       enqueue({ uid: uid(), type: 'count', day: iso, amount: val });
-      if (row) { state.balance = round2(state.balance - old + val); row.counted = val; }
+      if (row) { state.balance = shift(state.balance, val - old); row.counted = val; }
       changed = true;
     }
     if (changed) { recomputeWeekCounted(); saveState(); renderAll(); trySync(); }
@@ -311,7 +328,8 @@
   var editId = null, editWithdrawal = false;
   function openEdit(e) {
     editId = e.id; editWithdrawal = !!e.withdrawal;
-    byId('edit-amount').value = Number(e.amount).toFixed(2).replace('.', ',');
+    // κρυμμένο ποσό (null) → άδειο κουτί· άδειο στην αποθήκευση = «μένει ίδιο» (ΛΩ19)
+    byId('edit-amount').value = (e.amount === null) ? '' : Number(e.amount).toFixed(2).replace('.', ',');
     byId('edit-cat').value = e.category_id || '';
     byId('edit-desc').value = e.description || '';
     byId('edit-day').value = e.source_day || '';
@@ -322,21 +340,32 @@
   function saveEdit() {
     var item = (state.recent || []).filter(function (x) { return x.id === editId; })[0];
     if (!item) { closeSheets(); return; }
-    var amt = parseAmt(byId('edit-amount').value);
-    if (!(amt > 0)) { badAmount('edit-amount'); return; }
+    var raw = (byId('edit-amount').value || '').trim();
+    // 🔒 ΛΩ19 — το ποσό ήταν κρυμμένο (Λειτουργία Πανικού) και το κουτί έμεινε κενό →
+    // «το ποσό μένει ίδιο»: το γράμμα φεύγει ΧΩΡΙΣ ποσό, ποτέ με 0.
+    var keepAmt = (item.amount === null && raw === '');
+    var amt = keepAmt ? null : parseAmt(raw);
+    if (!keepAmt && !(amt > 0)) { badAmount('edit-amount'); return; }
     var catRaw = byId('edit-cat').value; var cat = catRaw ? Number(catRaw) : null;
     var biz = (document.querySelector('input[name=edit-biz]:checked') || {}).value === '1';
     var desc = byId('edit-desc').value || '';
     var day = editWithdrawal ? null : (byId('edit-day').value || null);
-    var oldAmt = Number(item.amount);
-    state.balance = round2(state.balance + (item.direction === 'out' ? (oldAmt - amt) : (amt - oldAmt)));
-    item.amount = amt; item.category_id = cat; item.is_business = biz; item.description = desc;
+    if (!keepAmt) {
+      if (item.amount === null) state.balance = null;   // δεν ξέρουμε τη διαφορά → κρυμμένο
+      else {
+        var oldAmt = Number(item.amount);
+        state.balance = shift(state.balance, item.direction === 'out' ? (oldAmt - amt) : (amt - oldAmt));
+      }
+      item.amount = amt;
+    }
+    item.category_id = cat; item.is_business = biz; item.description = desc;
     if (!editWithdrawal) item.source_day = day;
     var c = (state.categories || []).filter(function (x) { return String(x.id) === String(cat); })[0];
     item.category_name = c ? c.name : null; item.category_icon = c ? c.icon : null;
     // ΠΑΝΤΑ νέα ενέργεια (ποτέ ξαναγράψιμο γράμματος που ίσως έχει ήδη φύγει στη θυρίδα):
     // αν η κίνηση δεν έχει ακόμα πραγματικό id (tmp_), στείλε ref_uid = το uid της δημιουργίας.
-    var op = { uid: uid(), type: 'entry_edit', amount: amt, category_id: cat, is_business: biz, description: desc, source_day: editWithdrawal ? null : day };
+    var op = { uid: uid(), type: 'entry_edit', category_id: cat, is_business: biz, description: desc, source_day: editWithdrawal ? null : day };
+    if (!keepAmt) op.amount = amt;
     if (String(editId).indexOf('tmp_') === 0) op.ref_uid = String(editId).slice(4);
     else op.id = editId;
     enqueue(op);
@@ -344,7 +373,8 @@
   }
   function delEntry(e) {
     window.showConfirm('Σβήσιμο αυτής της κίνησης (' + euro(e.amount) + ');', function () {
-      state.balance = round2(state.balance + (e.direction === 'in' ? -e.amount : e.amount));
+      state.balance = (e.amount === null) ? null
+        : shift(state.balance, e.direction === 'in' ? -e.amount : e.amount);
       state.recent = (state.recent || []).filter(function (x) { return x.id !== e.id; });
       // ΠΑΝΤΑ νέα ενέργεια: αν η κίνηση δεν έχει φτάσει ακόμα (tmp_) στείλε ref_uid =
       // το uid της δημιουργίας· ο υπολογιστής τη δημιουργεί και μετά τη σβήνει (σωστό
@@ -375,7 +405,7 @@
     // Υιοθέτησε το «επίσημο» state ΜΟΝΟ όταν δεν περιμένει τίποτα — αλλιώς θα έκρυβε
     // τις τοπικές κινήσεις που ο υπολογιστής δεν έχει δει ακόμα (single-user → ασφαλές).
     if (!queue.length) save(LS_LASTSYNC, Date.now());   // άδεια ουρά = ο υπολογιστής τα έχει όλα
-    if (authState && authState.balance != null && !queue.length) {
+    if (usable(authState) && !queue.length) {
       state = authState; saveState();
     }
   }
@@ -444,7 +474,7 @@
     }
     fetch(API_STATE, { credentials: 'same-origin' })
       .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (s) { if (s && s.balance != null) { state = s; saveState(); renderAll(); } })
+      .then(function (s) { if (usable(s)) { state = s; saveState(); renderAll(); } })
       .catch(function () {
         if (window.CBSync && CBSync.configured()) {       // τοπικός server κλειστός → διάβασε από θυρίδα
           CBSync.pullState().then(function (st) {
@@ -454,24 +484,26 @@
       });
   }
 
-  // Διάβασε κλειδιά θυρίδας από QR/σύνδεσμο (#cb=…) → αποθήκευσε τοπικά, καθάρισε το URL.
+  /* Κλειδιά θυρίδας από QR/σύνδεσμο (#cb=…). ΛΩ19 — ΠΟΤΕ άμεσο γράψιμο: ένας πλαστός
+     σύνδεσμος έσβηνε το κλείδωμα (PIN) και έστελνε τις κινήσεις σε ξένη θυρίδα. Τώρα
+     περνά από την ΜΙΑ πόρτα `CBSync.pair` (δοκιμή + αποκρυπτογράφηση με τα ΝΕΑ κλειδιά +
+     επιβεβαίωση αν αντικαθιστά άλλα). Το URL καθαρίζει ΑΜΕΣΩΣ, ό,τι κι αν γίνει μετά. */
   function handleConnectHash() {
     try {
       var h = location.hash || '';
       var m = h.match(/[#&]cb=([^&]+)/);
       if (!m || !window.CBSync) return;
+      history.replaceState(null, '', location.pathname + location.search);
       var creds = CBSync.parsePayload(decodeURIComponent(m[1]));
-      if (creds) {
-        if (!CBSync.setCreds(creds)) {
-          // ο browser δεν άφησε να γραφτεί → ΜΗΝ πεις «συνδέθηκε» και ΜΗΝ σβήσεις το κλείδωμα
-          if (window.showAlert) showAlert('Ο browser δεν επιτρέπει αποθήκευση σε αυτό το κινητό, οπότε η σύνδεση δεν ολοκληρώθηκε.\n\nΆνοιξε τη σελίδα σε κανονικό παράθυρο (όχι ανώνυμη περιήγηση) και ξανασκάναρε το QR.', { title: '❌ Σύνδεση κινητού' });
-          return;
+      CBSync.pair(creds).then(function (res) {
+        if (!window.showAlert) return;
+        if (res.ok) {
+          showAlert('✅ Το κινητό συνδέθηκε με τη θυρίδα. Τώρα το Ταμείο δουλεύει και με κλειστό υπολογιστή.',
+            function () { location.reload(); }, { title: '📮 Σύνδεση κινητού' });
+        } else {
+          showAlert(CBSync.pairMessage(res.reason), null, { title: '❌ Σύνδεση κινητού' });
         }
-        // Νέα σύνδεση από το QR του υπολογιστή = μηδενισμός κλειδώματος (μόνος τρόπος reset PIN/δαχτυλικού).
-        if (window.CBLock) CBLock.clearAll();
-        history.replaceState(null, '', location.pathname + location.search);
-        if (window.showAlert) showAlert('✅ Το κινητό συνδέθηκε με τη θυρίδα. Τώρα το Ταμείο δουλεύει και με κλειστό υπολογιστή.', { title: '📮 Σύνδεση κινητού' });
-      }
+      });
     } catch (e) {}
   }
 

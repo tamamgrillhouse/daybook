@@ -66,10 +66,14 @@
       var msg=document.getElementById('c-msg');
       var creds=window.CBSync&&CBSync.parsePayload((document.getElementById('c-code').value||'').trim());
       if(!creds){ msg.style.color='#b3261e'; msg.textContent='❌ Ο κωδικός δεν είναι σωστός.'; return; }
-      CBSync.setCreds(creds);
-      if(window.CBLock) CBLock.clearAll();   // νέα σύνδεση = μηδενισμός κλειδώματος (reset PIN)
-      msg.style.color='#1c7a3e';
-      msg.textContent='✅ Συνδέθηκε! Τώρα το ταμείο δουλεύει και με κλειστό υπολογιστή.'; st();
+      // ΛΩ19 — ΜΙΑ πόρτα σύνδεσης: δοκιμή + αποκρυπτογράφηση με τα ΝΕΑ κλειδιά, και μόνο τότε
+      // αποθήκευση + μηδενισμός κλειδώματος (το κάνει το ίδιο το CBSync.pair).
+      msg.style.color='#555'; msg.textContent='Έλεγχος σύνδεσης…';
+      CBSync.pair(creds).then(function(res){
+        if(res.ok){ msg.style.color='#1c7a3e'; msg.textContent='✅ Συνδέθηκε! Τώρα το ταμείο δουλεύει και με κλειστό υπολογιστή.'; }
+        else{ msg.style.color='#b3261e'; msg.textContent='❌ '+CBSync.pairMessage(res.reason); }
+        st();
+      });
     });
     document.getElementById('c-test').addEventListener('click',function(){
       var m=document.getElementById('c-msg2'); m.style.color='#555'; m.textContent='Δοκιμή…';

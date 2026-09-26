@@ -104,8 +104,9 @@
   }
 
   // ── GitHub Contents API (από browser, fetch) ─────────────────────────────────
-  function gh(method, path, body) {
-    var c = getCreds();
+  // `creds` προαιρετικό: η σύνδεση (pair) δοκιμάζει ΝΕΑ κλειδιά ΠΡΙΝ τα αποθηκεύσει.
+  function gh(method, path, body, creds) {
+    var c = creds || getCreds();
     if (!c) return Promise.reject(new Error('not configured'));
     var url = 'https://api.github.com/repos/' + c.repo + '/contents/' + String(path).replace(/^\//, '');
     var opts = {
@@ -158,10 +159,10 @@
   }
 
   // Κατεβάζει & αποκρυπτογραφεί το state.enc → αντικείμενο κατάστασης ή null.
-  function pullState() {
-    var c = getCreds();
+  function pullState(creds) {
+    var c = creds || getCreds();
     if (!c) return Promise.resolve(null);
-    return gh('GET', 'state.enc').then(function (g) {
+    return gh('GET', 'state.enc', null, c).then(function (g) {
       // ΛΚ2 — Ο έλεγχος ταυτότητας ΠΡΩΤΑ. Το σώμα ενός 401 της GitHub είναι
       // `{"message":"Bad credentials"}` — δεν έχει `content`, οπότε ο παλιός έλεγχος
       // «δεν έχει content» επέστρεφε `null` μία γραμμή νωρίτερα και ο κλάδος από κάτω
@@ -176,8 +177,8 @@
 
   // Πλήρης έλεγχος των κλειδιών: round-trip κρυπτογράφησης + πρόσβαση στο repo
   // (χτυπά το repo metadata → καθαρή διάκριση auth / repo_not_found / offline).
-  function testConnection() {
-    var c = getCreds();
+  function testConnection(creds) {
+    var c = creds || getCreds();
     if (!c) return Promise.resolve({ ok: false, reason: 'not_configured' });
     if (!subtle) return Promise.resolve({ ok: false, reason: 'no_crypto' });
     var secret = 'selftest-κινητό-✓';
@@ -201,9 +202,71 @@
       .catch(function () { return { ok: false, reason: 'offline' }; });
   }
 
+  /* 🔐 ΛΩ19 — Η ΜΙΑ πόρτα σύνδεσης κινητού (QR / σύνδεσμος #cb= / επικόλληση / χειροκίνητα).
+     Πριν, ΚΑΘΕ σύνδεσμος #cb=… γραφόταν αμέσως ως νέα θυρίδα ΚΑΙ έσβηνε το κλείδωμα (PIN)
+     — ένας πλαστός σύνδεσμος αρκούσε για να ανοίξει το ταμείο και να στέλνει τις κινήσεις
+     αλλού. Τώρα τα νέα κλειδιά γίνονται δεκτά (και το κλείδωμα μηδενίζεται) ΜΟΝΟ όταν:
+       1. η θυρίδα απαντά με αυτά (testConnection με τα ΝΕΑ κλειδιά),
+       2. το state.enc του υπολογιστή ΑΝΟΙΓΕΙ με το ΝΕΟ κλειδί (αποκρυπτογράφηση + σχήμα),
+       3. αν υπάρχουν ήδη ΑΛΛΑ κλειδιά, ο άνθρωπος το επιβεβαιώνει στην οθόνη.
+     Κάθε σελίδα σύνδεσης καλεί ΑΥΤΟ — καμία δεν κάνει δικό της setCreds/clearAll.
+     Επιστρέφει Promise<{ok:true, state} | {ok:false, reason}>. */
+  function sameCreds(a, b) { return !!(a && b && a.repo === b.repo && a.token === b.token && a.key === b.key); }
+  function askReplace(oldC, newC) {
+    return new Promise(function (resolve) {
+      if (typeof window.showConfirm !== 'function') { resolve(false); return; }
+      window.showConfirm('Αυτό το κινητό είναι ήδη συνδεδεμένο με τη θυρίδα «' + oldC.repo + '».\n\n'
+        + 'Να αντικατασταθεί με «' + newC.repo + '»; Το κλείδωμα (PIN / δαχτυλικό) θα μηδενιστεί.\n\n'
+        + 'Αν δεν σκάναρες εσύ τώρα το QR του υπολογιστή σου, πάτα «Ακύρωση».',
+        function () { resolve(true); }, function () { resolve(false); },
+        { title: '⚠️ Αλλαγή σύνδεσης κινητού', yesLabel: 'Αντικατάσταση' });
+    });
+  }
+  function pair(creds) {
+    if (!creds || !creds.repo || !creds.token || !creds.key) return Promise.resolve({ ok: false, reason: 'invalid' });
+    if (!subtle) return Promise.resolve({ ok: false, reason: 'no_crypto' });
+    var c = { repo: String(creds.repo), token: String(creds.token), key: String(creds.key) };
+    return testConnection(c).then(function (t) {
+      if (!t.ok) return { ok: false, reason: t.reason };
+      return pullState(c).then(function (st) {
+        // το κλειδί ΠΡΕΠΕΙ να ανοίγει την κατάσταση του υπολογιστή — όχι απλώς «ένα κλειδί»
+        if (!st) return { ok: false, reason: 'no_state' };
+        if (typeof st !== 'object' || !Array.isArray(st.synced_uids)) return { ok: false, reason: 'bad_state' };
+        var old = getCreds();
+        var gate = (old && !sameCreds(old, c)) ? askReplace(old, c) : Promise.resolve(true);
+        return gate.then(function (yes) {
+          if (!yes) return { ok: false, reason: 'cancelled' };
+          if (!setCreds(c)) return { ok: false, reason: 'storage_blocked' };
+          // νέα, ΑΠΟΔΕΔΕΙΓΜΕΝΗ σύνδεση = μηδενισμός κλειδώματος (ο μόνος τρόπος reset PIN)
+          if (window.CBLock && typeof window.CBLock.clearAll === 'function') window.CBLock.clearAll();
+          return { ok: true, state: st };
+        });
+      }, function (e) {
+        return { ok: false, reason: (e && e.message === 'auth') ? 'auth' : 'bad_key' };
+      });
+    });
+  }
+  // Το μήνυμα κάθε αιτίας, ΜΙΑ φορά (οι σελίδες δεν κρατούν δικό τους αντίγραφο).
+  var PAIR_MSG = {
+    invalid: 'Ο κωδικός δεν είναι έγκυρος. Έλεγξε ότι αντιγράφηκε ολόκληρος.',
+    no_crypto: 'Αυτό το κινητό δεν υποστηρίζει κρυπτογράφηση (χρειάζεται ασφαλής σύνδεση https).',
+    not_configured: 'Λείπουν κλειδιά.',
+    bad_key: 'Το κλειδί δεν ανοίγει τα δεδομένα του υπολογιστή σου — η σύνδεση ΔΕΝ έγινε.',
+    auth: 'Το token είναι λάθος ή χωρίς δικαίωμα «Contents» — η σύνδεση ΔΕΝ έγινε.',
+    repo_not_found: 'Δεν βρέθηκε η θυρίδα — η σύνδεση ΔΕΝ έγινε.',
+    offline: 'Χωρίς σύνδεση στο internet αυτή τη στιγμή — η σύνδεση ΔΕΝ έγινε. Ξαναδοκίμασε με internet.',
+    no_state: 'Ο υπολογιστής δεν έχει στείλει ακόμα την κατάσταση του ταμείου στη θυρίδα.\n\nΣτον υπολογιστή πάτα «🔄 Έλεγχος τώρα» στο Ταμείο και ξανασκάναρε.',
+    bad_state: 'Η θυρίδα δεν περιέχει δεδομένα ταμείου — η σύνδεση ΔΕΝ έγινε.',
+    cancelled: 'Η σύνδεση ακυρώθηκε — το κινητό έμεινε όπως ήταν.',
+    storage_blocked: 'Ο browser δεν επιτρέπει αποθήκευση σε αυτό το κινητό, οπότε η σύνδεση δεν ολοκληρώθηκε.\n\nΆνοιξε τη σελίδα σε κανονικό παράθυρο (όχι ανώνυμη περιήγηση) και ξαναπροσπάθησε.'
+  };
+  function pairMessage(reason) { return PAIR_MSG[reason] || ('Η σύνδεση δεν έγινε (' + reason + ').'); }
+
   window.CBSync = {
-    getCreds: getCreds, setCreds: setCreds, clearCreds: clearCreds, configured: configured,
+    // ❌ ΛΩ19 — ΚΑΝΕΝΑ δημόσιο setCreds: νέα κλειδιά μπαίνουν ΜΟΝΟ μέσα από το `pair`.
+    getCreds: getCreds, clearCreds: clearCreds, configured: configured,
     parsePayload: parsePayload, pushOps: pushOps, pullState: pullState,
-    testConnection: testConnection, hasCrypto: function () { return !!subtle; }
+    testConnection: testConnection, hasCrypto: function () { return !!subtle; },
+    pair: pair, pairMessage: pairMessage
   };
 })();
