@@ -76,13 +76,9 @@
     var s = n.toFixed(2).split('.'); s[0] = s[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     return (neg ? '−' : '') + s[0] + ',' + s[1] + ' €';
   }
-  function parseAmt(s) {
-    s = (s == null ? '' : String(s)).trim().replace('€', '').replace(/\s/g, '');
-    if (!s) return 0;
-    if (s.indexOf(',') >= 0 && s.indexOf('.') >= 0) s = s.replace(/\./g, '').replace(',', '.');
-    else s = s.replace(',', '.');
-    var n = parseFloat(s); return isNaN(n) ? 0 : round2(n);
-  }
+  // 🔢 ΛΩ19 (R11) — το ποσό ενός κουτιού διαβάζεται από τον ΕΝΑ αναγνώστη (num-read.js),
+  // όπως στον υπολογιστή: «1.200» € = 1200, «12,50» = 12,5 · κενό/άκυρο → 0.
+  function parseAmt(el) { return round2(window.readNum(el, 0)); }
   function byId(id) { return document.getElementById(id); }
   // Μετακίνηση ποσού· κρυμμένο (null) μένει κρυμμένο — ποτέ «null − 5 = −5».
   function shift(v, d) { return v === null ? null : round2(v + d); }
@@ -284,7 +280,7 @@
   }
 
   function addPay() {
-    var amt = parseAmt(byId('pay-amount').value);
+    var amt = parseAmt(byId('pay-amount'));
     if (!(amt > 0)) { badAmount('pay-amount'); return; }
     var day = byId('pay-day').value || null;
     var catRaw = byId('pay-cat').value; var cat = catRaw ? Number(catRaw) : null;
@@ -299,7 +295,7 @@
     renderAll(); closeSheets(); trySync();
   }
   function addDraw() {
-    var amt = parseAmt(byId('draw-amount').value);
+    var amt = parseAmt(byId('draw-amount'));
     if (!(amt > 0)) { badAmount('draw-amount'); return; }
     var biz = (document.querySelector('input[name=draw-biz]:checked') || {}).value === '1';
     var desc = byId('draw-desc').value || '';
@@ -313,7 +309,7 @@
   function saveCount() {
     var inputs = document.querySelectorAll('#count-rows .m-cin'), changed = false;
     for (var i = 0; i < inputs.length; i++) {
-      var inp = inputs[i], iso = inp.getAttribute('data-iso'), val = parseAmt(inp.value);
+      var inp = inputs[i], iso = inp.getAttribute('data-iso'), val = parseAmt(inp);
       var row = (state.week.rows || []).filter(function (r) { return r.iso === iso; })[0];
       var old = row && row.counted != null ? Number(row.counted) : 0;
       if (val === old) continue;
@@ -344,7 +340,7 @@
     // 🔒 ΛΩ19 — το ποσό ήταν κρυμμένο (Λειτουργία Πανικού) και το κουτί έμεινε κενό →
     // «το ποσό μένει ίδιο»: το γράμμα φεύγει ΧΩΡΙΣ ποσό, ποτέ με 0.
     var keepAmt = (item.amount === null && raw === '');
-    var amt = keepAmt ? null : parseAmt(raw);
+    var amt = keepAmt ? null : parseAmt(byId('edit-amount'));
     if (!keepAmt && !(amt > 0)) { badAmount('edit-amount'); return; }
     var catRaw = byId('edit-cat').value; var cat = catRaw ? Number(catRaw) : null;
     var biz = (document.querySelector('input[name=edit-biz]:checked') || {}).value === '1';
