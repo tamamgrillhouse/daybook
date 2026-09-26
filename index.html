@@ -81,7 +81,7 @@
     <div class="m-fld"><label>Από ποιο ταμείο μέρας;</label><select id="pay-day"></select>
       <div class="m-hint">Προ-διαλεγμένη η <b>προηγούμενη ανοιχτή μέρα</b> · το ρεπό παρακάμπτεται.</div></div>
     <div class="m-fld"><label>Κατηγορία</label><select id="pay-cat"></select></div>
-    <div class="m-fld"><label>Ποσό (€)</label><input id="pay-amount" inputmode="decimal"></div>
+    <div class="m-fld"><label>Ποσό (€)</label><input id="pay-amount" inputmode="decimal" data-money></div>
     <div class="m-fld"><label>Είναι της επιχείρησης;</label>
       <div class="m-tog">
         <label class="g"><input type="radio" name="pay-biz" value="1" checked>🟢 Επιχείρηση</label>
@@ -97,7 +97,7 @@
     <div class="m-grip"></div>
     <div class="m-sheet-h"><span>💸 Πήρα μετρητά (για μένα)</span><button class="x" data-close>✕</button></div>
     <div class="m-note">Γενική ανάληψη από το <b>σύνολο</b>, με <b>σημερινή</b> ημερομηνία — χωρίς επιλογέα μέρας.</div>
-    <div class="m-fld"><label>Ποσό (€)</label><input id="draw-amount" inputmode="decimal"></div>
+    <div class="m-fld"><label>Ποσό (€)</label><input id="draw-amount" inputmode="decimal" data-money></div>
     <div class="m-fld"><label>Είναι της επιχείρησης;</label>
       <div class="m-tog">
         <label class="p"><input type="radio" name="draw-biz" value="0" checked>⚪ Προσωπικό</label>
@@ -124,7 +124,7 @@
     <div class="m-sheet-h"><span>✏️ Διόρθωση κίνησης</span><button class="x" data-close>✕</button></div>
     <div class="m-fld" id="edit-day-wrap"><label>Από ποιο ταμείο μέρας;</label><select id="edit-day"></select></div>
     <div class="m-fld"><label>Κατηγορία</label><select id="edit-cat"></select></div>
-    <div class="m-fld"><label>Ποσό (€)</label><input id="edit-amount" inputmode="decimal"></div>
+    <div class="m-fld"><label>Ποσό (€)</label><input id="edit-amount" inputmode="decimal" data-money></div>
     <div class="m-fld"><label>Είναι της επιχείρησης;</label>
       <div class="m-tog">
         <label class="g"><input type="radio" name="edit-biz" value="1" id="edit-biz1">🟢 Επιχείρηση</label>
