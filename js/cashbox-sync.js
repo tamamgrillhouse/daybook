@@ -208,15 +208,55 @@
      αλλού. Τώρα τα νέα κλειδιά γίνονται δεκτά (και το κλείδωμα μηδενίζεται) ΜΟΝΟ όταν:
        1. η θυρίδα απαντά με αυτά (testConnection με τα ΝΕΑ κλειδιά),
        2. το state.enc του υπολογιστή ΑΝΟΙΓΕΙ με το ΝΕΟ κλειδί (αποκρυπτογράφηση + σχήμα),
-       3. αν υπάρχουν ήδη ΑΛΛΑ κλειδιά, ο άνθρωπος το επιβεβαιώνει στην οθόνη.
+       3. αν υπάρχουν ήδη ΑΛΛΑ κλειδιά, ο άνθρωπος το επιβεβαιώνει στην οθόνη,
+       4. αν είναι ΑΛΛΗ θυρίδα και υπάρχει κλείδωμα (PIN), δίνεται ο ΤΩΡΙΝΟΣ κωδικός (Q2).
+     «Ίδια θυρίδα» = ίδιο repo + ίδιο κλειδί κρυπτογράφησης (το token μπορεί να αλλάξει).
+     Συγκρίνεται με τα τωρινά κλειδιά ΚΑΙ με το «σπίτι» (cb_sync_home: repo + hash κλειδιού)
+     που κρατιέται και μετά την «Αποσύνδεση» — αλλιώς «αποσύνδεση → ξένη θυρίδα» θα
+     παρέκαμπτε τον κωδικό. Ίδια θυρίδα = ο μόνος δρόμος για «ξέχασα τον κωδικό» (μηδενισμός).
      Κάθε σελίδα σύνδεσης καλεί ΑΥΤΟ — καμία δεν κάνει δικό της setCreds/clearAll.
      Επιστρέφει Promise<{ok:true, state} | {ok:false, reason}>. */
-  function sameCreds(a, b) { return !!(a && b && a.repo === b.repo && a.token === b.token && a.key === b.key); }
-  function askReplace(oldC, newC) {
+  var LS_HOME = 'cb_sync_home';
+  function sha256hex(str) {
+    return subtle.digest('SHA-256', new TextEncoder().encode(String(str))).then(function (buf) {
+      var a = new Uint8Array(buf), h = ''; for (var i = 0; i < a.length; i++) h += (a[i] < 16 ? '0' : '') + a[i].toString(16); return h;
+    });
+  }
+  function getHome() {
+    try { var v = JSON.parse(localStorage.getItem(LS_HOME)); return (v && v.repo && v.kh) ? v : null; }
+    catch (e) { return null; }
+  }
+  function setHome(c) {
+    return sha256hex(c.key).then(function (kh) {
+      try { localStorage.setItem(LS_HOME, JSON.stringify({ repo: c.repo, kh: kh })); } catch (e) {}
+    });
+  }
+  function sameMailbox(a, b) { return !!(a && b && a.repo === b.repo && a.key === b.key); }
+  // Promise<bool>: είναι η θυρίδα που είχε ήδη αυτό το κινητό (τωρινή ή η τελευταία πριν την αποσύνδεση);
+  function isHomeMailbox(c) {
+    if (sameMailbox(getCreds(), c)) return Promise.resolve(true);
+    var home = getHome();
+    if (!home || home.repo !== c.repo) return Promise.resolve(false);
+    return sha256hex(c.key).then(function (kh) { return kh === home.kh; });
+  }
+  // Υπάρχει κλείδωμα; Αν λείπει το CBLock αλλά υπάρχει αποθηκευμένο PIN → «ναι» (ποτέ παράκαμψη).
+  function pinIsSet() {
+    var L = window.CBLock;
+    if (L && typeof L.hasPin === 'function') return !!L.hasPin();
+    try { return !!localStorage.getItem('cb_lock_pin'); } catch (e) { return false; }
+  }
+  function askCurrentPin() {
+    var L = window.CBLock;
+    if (!L || typeof L.askPin !== 'function') return Promise.resolve(false);
+    return L.askPin({ title: 'Αλλαγή θυρίδας', sub: 'Βάλε τον τωρινό 6ψήφιο κωδικό' })
+      .then(function (ok) { return !!ok; }, function () { return false; });
+  }
+  function askReplace(oldC, newC, needPin) {
     return new Promise(function (resolve) {
       if (typeof window.showConfirm !== 'function') { resolve(false); return; }
       window.showConfirm('Αυτό το κινητό είναι ήδη συνδεδεμένο με τη θυρίδα «' + oldC.repo + '».\n\n'
-        + 'Να αντικατασταθεί με «' + newC.repo + '»; Το κλείδωμα (PIN / δαχτυλικό) θα μηδενιστεί.\n\n'
+        + 'Να αντικατασταθεί με «' + newC.repo + '»;'
+        + (needPin ? ' Θα χρειαστεί ο τωρινός κωδικός (PIN).' : '') + '\n\n'
         + 'Αν δεν σκάναρες εσύ τώρα το QR του υπολογιστή σου, πάτα «Ακύρωση».',
         function () { resolve(true); }, function () { resolve(false); },
         { title: '⚠️ Αλλαγή σύνδεσης κινητού', yesLabel: 'Αντικατάσταση' });
@@ -233,13 +273,22 @@
         if (!st) return { ok: false, reason: 'no_state' };
         if (typeof st !== 'object' || !Array.isArray(st.synced_uids)) return { ok: false, reason: 'bad_state' };
         var old = getCreds();
-        var gate = (old && !sameCreds(old, c)) ? askReplace(old, c) : Promise.resolve(true);
-        return gate.then(function (yes) {
-          if (!yes) return { ok: false, reason: 'cancelled' };
-          if (!setCreds(c)) return { ok: false, reason: 'storage_blocked' };
-          // νέα, ΑΠΟΔΕΔΕΙΓΜΕΝΗ σύνδεση = μηδενισμός κλειδώματος (ο μόνος τρόπος reset PIN)
-          if (window.CBLock && typeof window.CBLock.clearAll === 'function') window.CBLock.clearAll();
-          return { ok: true, state: st };
+        return isHomeMailbox(c).then(function (home) {
+          var needPin = !home && pinIsSet();
+          var gate = (old && !sameMailbox(old, c)) ? askReplace(old, c, needPin) : Promise.resolve(true);
+          return gate.then(function (yes) {
+            if (!yes) return { ok: false, reason: 'cancelled' };
+            return (needPin ? askCurrentPin() : Promise.resolve(true)).then(function (pinOk) {
+              if (!pinOk) return { ok: false, reason: 'pin_needed' };
+              if (!setCreds(c)) return { ok: false, reason: 'storage_blocked' };
+              return setHome(c).then(function () {
+                // Ίδια θυρίδα (ή κινητό χωρίς κλείδωμα) = μηδενισμός κλειδώματος — ο δρόμος του
+                // «ξέχασα τον κωδικό». Άλλη θυρίδα με ΣΩΣΤΟ κωδικό → το κλείδωμα μένει όπως ήταν.
+                if (!needPin && window.CBLock && typeof window.CBLock.clearAll === 'function') window.CBLock.clearAll();
+                return { ok: true, state: st };
+              });
+            });
+          });
         });
       }, function (e) {
         return { ok: false, reason: (e && e.message === 'auth') ? 'auth' : 'bad_key' };
@@ -258,6 +307,9 @@
     no_state: 'Ο υπολογιστής δεν έχει στείλει ακόμα την κατάσταση του ταμείου στη θυρίδα.\n\nΣτον υπολογιστή πάτα «🔄 Έλεγχος τώρα» στο Ταμείο και ξανασκάναρε.',
     bad_state: 'Η θυρίδα δεν περιέχει δεδομένα ταμείου — η σύνδεση ΔΕΝ έγινε.',
     cancelled: 'Η σύνδεση ακυρώθηκε — το κινητό έμεινε όπως ήταν.',
+    pin_needed: 'Για σύνδεση με ΑΛΛΗ θυρίδα χρειάζεται ο τωρινός κωδικός (PIN) — το κινητό έμεινε όπως ήταν.\n\n'
+      + 'Ξέχασες τον κωδικό; Σκάναρε το QR του ΔΙΚΟΥ σου υπολογιστή (Ρυθμίσεις → 📮 Συγχρονισμός κινητού): '
+      + 'η ίδια θυρίδα μηδενίζει το κλείδωμα χωρίς κωδικό.',
     storage_blocked: 'Ο browser δεν επιτρέπει αποθήκευση σε αυτό το κινητό, οπότε η σύνδεση δεν ολοκληρώθηκε.\n\nΆνοιξε τη σελίδα σε κανονικό παράθυρο (όχι ανώνυμη περιήγηση) και ξαναπροσπάθησε.'
   };
   function pairMessage(reason) { return PAIR_MSG[reason] || ('Η σύνδεση δεν έγινε (' + reason + ').'); }

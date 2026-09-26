@@ -5,8 +5,8 @@
      Δουλεύει ΜΟΝΟ σε ασφαλή σύνδεση (https → GitHub Pages) ή localhost.
    - Κανόνας: το δαχτυλικό ΔΕΝ ανοίγει χωρίς ορισμένο PIN.
    - Κλειδώνει σε ΚΑΘΕ άνοιγμα + ξανακλειδώνει όταν αφήνεις την εφαρμογή στην άκρη.
-   - Reset: γίνεται από τον υπολογιστή — με νέα σύνδεση QR/κωδικού (βλ. cashbox-app.js handleConnectHash
-     & connect/settings) που σβήνει το κλείδωμα (μόνο όποιος έχει το QR του υπολογιστή).
+   - Reset: γίνεται από τον υπολογιστή — ξανασκανάρισμα του QR της ΙΔΙΑΣ θυρίδας (CBSync.pair)
+     σβήνει το κλείδωμα. ΑΛΛΗ θυρίδα ζητά πρώτα τον τωρινό κωδικό (askPin) — ΛΩ19.
    Όλα ζουν ΜΟΝΟ στο κινητό (localStorage). Εκτίθεται ως window.CBLock. */
 (function () {
   'use strict';
@@ -228,11 +228,12 @@
       // ── όψη ΚΩΔΙΚΟΥ (πληκτρολόγιο) ──
       + '<div class="cbl-view" id="cbl-view-pin">'
       + '<div class="cbl-top"><div class="cbl-glyph">🔢</div>'
-      + '<div class="cbl-title">Βάλε τον κωδικό</div>'
-      + '<div class="cbl-sub">6ψήφιος κωδικός</div></div>'
+      + '<div class="cbl-title" id="cbl-pintitle">Βάλε τον κωδικό</div>'
+      + '<div class="cbl-sub" id="cbl-pinsub">6ψήφιος κωδικός</div></div>'
       + '<div class="cbl-mid"><div class="cbl-dots" id="cbl-dots"></div><div class="cbl-err" id="cbl-err"></div></div>'
       + '<div class="cbl-bottom"><div class="cbl-pad" id="cbl-pad"></div>'
       +   '<button type="button" class="cbl-backfp" id="cbl-backfp">👆 Πίσω στο δαχτυλικό</button>'
+      +   '<button type="button" class="cbl-usepin" id="cbl-askcancel" style="display:none">Ακύρωση</button>'
       +   '<button type="button" class="cbl-forgot" data-forgot>Ξέχασα τον κωδικό;</button></div>'
       + '</div>';
     document.body.appendChild(ovEl);
@@ -282,6 +283,7 @@
     document.getElementById('cbl-usepin').addEventListener('click', showPinView);
     backfpBtn.addEventListener('click', startFp);
     retryBtn.addEventListener('click', startFp);
+    document.getElementById('cbl-askcancel').addEventListener('click', function () { endAsk(false); });
   }
 
   function renderPad() {
@@ -302,7 +304,8 @@
   function resetEntry() { buf = ''; paintDots(); errEl.textContent = ''; }
   function tryPin() {
     verifyPin(buf).then(function (ok) {
-      if (ok) { pass(); }
+      if (ok && ask) { endAsk(true); }
+      else if (ok) { pass(); }
       else {
         dotsEl.classList.add('cbl-shake');
         errEl.textContent = 'Λάθος κωδικός — δοκίμασε ξανά';
@@ -367,6 +370,46 @@
     else { showPinView(); }
   }
   function lockNow() { guard(null); }
+
+  /* 🔐 ΛΩ19 — «Βάλε τον ΤΩΡΙΝΟ κωδικό» για μια ενέργεια (αλλαγή θυρίδας στο CBSync.pair).
+     ΜΟΝΟ κωδικός (όχι δαχτυλικό) + κουμπί «Ακύρωση». Promise<true> = σωστός κωδικός,
+     <false> = ακύρωση. Χωρίς ορισμένο PIN δεν υπάρχει τίποτα να προστατευτεί → true.
+     Αν η οθόνη κλειδώματος ήταν ήδη ανοιχτή, η ακύρωση την αφήνει κλειδωμένη όπως ήταν. */
+  var ask = null;
+  function askPin(opts) {
+    if (!hasPin()) return Promise.resolve(true);
+    if (ask) endAsk(false);
+    build();
+    return new Promise(function (resolve) {
+      ask = { resolve: resolve, wasOpen: isOpen() };
+      renderPad();
+      document.getElementById('cbl-pintitle').textContent = (opts && opts.title) || 'Βάλε τον τωρινό κωδικό';
+      document.getElementById('cbl-pinsub').textContent = (opts && opts.sub) || '6ψήφιος κωδικός';
+      showPinView();
+      backfpBtn.style.display = 'none';
+      document.getElementById('cbl-askcancel').style.display = 'block';
+      ovEl.classList.add('on');
+      document.body.style.overflow = 'hidden';
+    });
+  }
+  function endAsk(ok) {
+    var a = ask; if (!a) return;
+    ask = null;
+    document.getElementById('cbl-askcancel').style.display = 'none';
+    document.getElementById('cbl-pintitle').textContent = 'Βάλε τον κωδικό';
+    document.getElementById('cbl-pinsub').textContent = '6ψήφιος κωδικός';
+    if (ok && a.wasOpen) { pass(); }                      // σωστός κωδικός = και ξεκλείδωμα
+    else if (a.wasOpen) {                                 // ακύρωση → πίσω στο κλείδωμα
+      resetEntry();
+      if (fpOn() && fpSupported()) showFpView(); else showPinView();
+    } else {
+      resetEntry();
+      forgotPanel.classList.remove('on');
+      ovEl.classList.remove('on');
+      document.body.style.overflow = '';
+    }
+    a.resolve(!!ok);
+  }
   function isOpen() { return !!(ovEl && ovEl.classList.contains('on')); }
   // Κλείδωσε ΜΟΝΟ αν χρειάζεται (φρέσκο άνοιγμα ή πέρασε το περιθώριο)· αλλιώς απλώς «ενεργός τώρα».
   function lockIfNeeded() { if (shouldLock()) lockNow(); else if (isEnabled()) stampSeen(); }
@@ -391,7 +434,7 @@
     setPin: setPin, verifyPin: verifyPin, clearPin: clearPin, clearFp: clearFp, clearAll: clearAll,
     getGrace: getGrace, setGrace: setGrace,
     fpSupported: fpSupported, fpPlatformAvailable: fpPlatformAvailable, registerFp: registerFp,
-    guard: guard, lockNow: lockNow, lockIfNeeded: lockIfNeeded, arm: arm,
+    guard: guard, lockNow: lockNow, lockIfNeeded: lockIfNeeded, arm: arm, askPin: askPin,
     hasCrypto: function () { return !!subtle; },
     // Κάρτα ρυθμίσεων (μία πηγή): mountSettings(el) → φτιάχνει & συνδέει το UI «Κλείδωμα εφαρμογής».
     mountSettings: mountSettings
