@@ -189,6 +189,9 @@
       var ex = r.out ? '<br><span class="ex">έξοδα −' + euro(r.out) + '</span>' : '';
       if (r.closed) div.innerHTML = '<div class="d">' + r.label + ' (ρεπό)' + ex + '</div><span class="m-dash">—</span>';
       else div.innerHTML = '<div class="d">' + r.label + ex + '</div><input class="m-cin" data-iso="' + r.iso + '" inputmode="decimal" data-money value="' + (r.counted != null ? Number(r.counted).toFixed(2).replace('.', ',') : '') + '">';
+      // ΜΕ3 — όνομα για αναγνώστη οθόνης: «Μέτρηση Δευ 28» (μέσω DOM, όχι μέσα στο HTML)
+      var ci = div.querySelector('.m-cin'), dl = div.querySelector('.d');
+      if (ci && dl) ci.setAttribute('aria-label', 'Μέτρηση ' + (dl.firstChild ? dl.firstChild.textContent : ''));
       box.appendChild(div);
     });
     var t = state.week.totals || {};

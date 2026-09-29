@@ -78,17 +78,17 @@
   <div class="m-sheet" id="s-pay">
     <div class="m-grip"></div>
     <div class="m-sheet-h"><span>🧾 Πληρωμή / Έξοδο</span><button class="x" data-close>✕</button></div>
-    <div class="m-fld"><label>Από ποιο ταμείο μέρας;</label><select id="pay-day"></select>
+    <div class="m-fld"><label for="pay-day">Από ποιο ταμείο μέρας;</label><select id="pay-day"></select>
       <div class="m-hint">Προ-διαλεγμένη η <b>προηγούμενη ανοιχτή μέρα</b> · το ρεπό παρακάμπτεται.</div></div>
-    <div class="m-fld"><label>Κατηγορία</label><select id="pay-cat"></select></div>
-    <div class="m-fld"><label>Ποσό (€)</label><input id="pay-amount" inputmode="decimal" data-money></div>
+    <div class="m-fld"><label for="pay-cat">Κατηγορία</label><select id="pay-cat"></select></div>
+    <div class="m-fld"><label for="pay-amount">Ποσό (€)</label><input id="pay-amount" inputmode="decimal" data-money></div>
     <div class="m-fld"><label>Είναι της επιχείρησης;</label>
       <div class="m-tog">
         <label class="g"><input type="radio" name="pay-biz" value="1" checked>🟢 Επιχείρηση</label>
         <label class="p"><input type="radio" name="pay-biz" value="0">⚪ Προσωπικό</label>
       </div>
     </div>
-    <div class="m-fld"><label>Σημείωση (προαιρετικό)</label><input id="pay-desc"></div>
+    <div class="m-fld"><label for="pay-desc">Σημείωση (προαιρετικό)</label><input id="pay-desc"></div>
     <button type="button" class="btn-primary" id="pay-save" style="width:100%">Αποθήκευση</button>
   </div>
 
@@ -97,14 +97,14 @@
     <div class="m-grip"></div>
     <div class="m-sheet-h"><span>💸 Πήρα μετρητά (για μένα)</span><button class="x" data-close>✕</button></div>
     <div class="m-note">Γενική ανάληψη από το <b>σύνολο</b>, με <b>σημερινή</b> ημερομηνία — χωρίς επιλογέα μέρας.</div>
-    <div class="m-fld"><label>Ποσό (€)</label><input id="draw-amount" inputmode="decimal" data-money></div>
+    <div class="m-fld"><label for="draw-amount">Ποσό (€)</label><input id="draw-amount" inputmode="decimal" data-money></div>
     <div class="m-fld"><label>Είναι της επιχείρησης;</label>
       <div class="m-tog">
         <label class="p"><input type="radio" name="draw-biz" value="0" checked>⚪ Προσωπικό</label>
         <label class="g"><input type="radio" name="draw-biz" value="1">🟢 Επιχείρηση</label>
       </div>
     </div>
-    <div class="m-fld"><label>Σημείωση (προαιρετικό)</label><input id="draw-desc"></div>
+    <div class="m-fld"><label for="draw-desc">Σημείωση (προαιρετικό)</label><input id="draw-desc"></div>
     <button type="button" class="btn-primary" id="draw-save" style="width:100%">Αποθήκευση</button>
   </div>
 
@@ -122,16 +122,16 @@
   <div class="m-sheet" id="s-edit">
     <div class="m-grip"></div>
     <div class="m-sheet-h"><span>✏️ Διόρθωση κίνησης</span><button class="x" data-close>✕</button></div>
-    <div class="m-fld" id="edit-day-wrap"><label>Από ποιο ταμείο μέρας;</label><select id="edit-day"></select></div>
-    <div class="m-fld"><label>Κατηγορία</label><select id="edit-cat"></select></div>
-    <div class="m-fld"><label>Ποσό (€)</label><input id="edit-amount" inputmode="decimal" data-money></div>
+    <div class="m-fld" id="edit-day-wrap"><label for="edit-day">Από ποιο ταμείο μέρας;</label><select id="edit-day"></select></div>
+    <div class="m-fld"><label for="edit-cat">Κατηγορία</label><select id="edit-cat"></select></div>
+    <div class="m-fld"><label for="edit-amount">Ποσό (€)</label><input id="edit-amount" inputmode="decimal" data-money></div>
     <div class="m-fld"><label>Είναι της επιχείρησης;</label>
       <div class="m-tog">
         <label class="g"><input type="radio" name="edit-biz" value="1" id="edit-biz1">🟢 Επιχείρηση</label>
         <label class="p"><input type="radio" name="edit-biz" value="0" id="edit-biz0">⚪ Προσωπικό</label>
       </div>
     </div>
-    <div class="m-fld"><label>Σημείωση</label><input id="edit-desc"></div>
+    <div class="m-fld"><label for="edit-desc">Σημείωση</label><input id="edit-desc"></div>
     <button type="button" class="btn-primary" id="edit-save" style="width:100%">Αποθήκευση</button>
   </div>
 
