@@ -73,6 +73,13 @@ body{font-family:'Segoe UI',system-ui,Roboto,Arial,sans-serif;background:var(--b
 .m-tile.draw{background:var(--purple)}
 .m-tile.count{background:var(--blue);grid-column:1 / -1;flex-direction:row;min-height:64px}
 .m-tile.count .ic{font-size:24px}
+/* ΜΣΤ1 — μεταφορά μετρητών: 700άρα πράσινο-μπλε, λευκό κείμενο 5,47:1 */
+.m-tile.move{background:#0f766e;grid-column:1 / -1;flex-direction:row;min-height:64px}
+.m-tile.move .ic{font-size:24px}
+.m-opts{display:flex;flex-direction:column;gap:8px}
+.m-fld .m-opts label{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:12px;font-weight:700;font-size:13.5px;cursor:pointer;margin:0;color:var(--ink)}
+.m-fld .m-opts label:has(input:checked){background:var(--orange-l);border-color:#f3cfb3}
+.m-fld .m-opts input{flex:0 0 auto;width:18px;height:18px;margin:0;padding:0}
 
 .m-sec{font-weight:800;font-size:13px;color:var(--grey);margin:4px 2px 10px;text-transform:uppercase;letter-spacing:.4px}
 

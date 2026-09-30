@@ -107,11 +107,20 @@
     if (syncError) return { cls: 'wait', txt: '⚠️ δεν στάλθηκε' };
     return { cls: 'wait', txt: '⏳ αναμονή' };
   }
+  // ΜΣΤ1 — μεταφορά μετρητών (τράπεζα ⇄ ταμείο, δικά μου → ταμείο): ούτε έσοδο ούτε έξοδο.
+  var MOVE_DIR = { bank_in: 'in', bank_out: 'out', own_in: 'in' };
+  function moveUi(e) {
+    if (!e || !MOVE_DIR[e.kind]) return null;
+    var mk = (state.move_kinds || {})[e.kind];
+    return mk || { icon: '🔀', title: 'Μεταφορά μετρητών', sub: '' };
+  }
   function buildRow(e) {
-    var emo = e.withdrawal ? '💸' : (e.category_icon || '🧾');
-    var title = e.withdrawal ? 'Πήρα μετρητά' : (e.category_name || 'Έξοδο');
-    var biz = e.is_business ? '🟢' : '⚪';
-    var sub = e.withdrawal ? ('γενική ανάληψη · ' + fmtDate(e.entry_date)) : ('από ταμείο ' + fmtDate(e.source_day || e.entry_date));
+    var mv = moveUi(e);
+    var emo = mv ? mv.icon : (e.withdrawal ? '💸' : (e.category_icon || '🧾'));
+    var title = mv ? mv.title : (e.withdrawal ? 'Πήρα μετρητά' : (e.category_name || 'Έξοδο'));
+    var biz = mv ? '🔀' : (e.is_business ? '🟢' : '⚪');
+    var sub = mv ? ((mv.sub ? mv.sub + ' · ' : '') + fmtDate(e.entry_date))
+      : (e.withdrawal ? ('γενική ανάληψη · ' + fmtDate(e.entry_date)) : ('από ταμείο ' + fmtDate(e.source_day || e.entry_date)));
     if (e.description) sub += ' · ' + e.description;
     var sign = e.direction === 'in' ? '+' : '−';
     var ss = itemState(e);
@@ -309,6 +318,21 @@
     saveState(); byId('draw-amount').value = ''; byId('draw-desc').value = '';
     renderAll(); closeSheets(); trySync();
   }
+  function addMove() {
+    var amt = parseAmt(byId('move-amount'));
+    if (!(amt > 0)) { badAmount('move-amount'); return; }
+    var kind = (document.querySelector('input[name=move-kind]:checked') || {}).value || 'bank_in';
+    var day = byId('move-day').value || todayIso();
+    if (day > todayIso()) day = todayIso();   // ο υπολογιστής κάνει το ίδιο — ποτέ μελλοντική
+    var desc = byId('move-desc').value || '';
+    var dir = MOVE_DIR[kind] || 'in';
+    var u = uid();
+    enqueue({ uid: u, type: 'transfer', kind: kind, amount: amt, day: day, description: desc });
+    state.balance = shift(state.balance, dir === 'in' ? amt : -amt);
+    state.recent.unshift({ id: 'tmp_' + u, entry_date: day, source_day: null, amount: amt, direction: dir, category_id: null, category_name: null, category_icon: null, description: desc, is_business: false, withdrawal: false, kind: kind });
+    saveState(); byId('move-amount').value = ''; byId('move-desc').value = '';
+    renderAll(); closeSheets(); trySync();
+  }
   function saveCount() {
     var inputs = document.querySelectorAll('#count-rows .m-cin'), changed = false;
     for (var i = 0; i < inputs.length; i++) {
@@ -324,15 +348,21 @@
     closeSheets();
   }
 
-  var editId = null, editWithdrawal = false;
+  var editId = null, editWithdrawal = false, editMove = false;
   function openEdit(e) {
-    editId = e.id; editWithdrawal = !!e.withdrawal;
+    editId = e.id; editWithdrawal = !!e.withdrawal; editMove = !!moveUi(e);
     // κρυμμένο ποσό (null) → άδειο κουτί· άδειο στην αποθήκευση = «μένει ίδιο» (ΛΩ19)
     byId('edit-amount').value = (e.amount === null) ? '' : Number(e.amount).toFixed(2).replace('.', ',');
     byId('edit-cat').value = e.category_id || '';
     byId('edit-desc').value = e.description || '';
     byId('edit-day').value = e.source_day || '';
-    byId('edit-day-wrap').style.display = e.withdrawal ? 'none' : '';
+    byId('edit-day-wrap').style.display = (e.withdrawal || editMove) ? 'none' : '';
+    // ΜΣΤ1 — μεταφορά: ημερομηνία αντί για ταμείο μέρας, χωρίς κατηγορία/🟢⚪
+    byId('edit-date-wrap').style.display = editMove ? '' : 'none';
+    byId('edit-date').value = editMove ? (e.entry_date || '') : '';
+    byId('edit-date').max = todayIso();
+    byId('edit-cat-wrap').style.display = editMove ? 'none' : '';
+    byId('edit-biz-wrap').style.display = editMove ? 'none' : '';
     byId(e.is_business ? 'edit-biz1' : 'edit-biz0').checked = true;
     openSheet('s-edit');
   }
@@ -345,9 +375,30 @@
     var keepAmt = (item.amount === null && raw === '');
     var amt = keepAmt ? null : parseAmt(byId('edit-amount'));
     if (!keepAmt && !(amt > 0)) { badAmount('edit-amount'); return; }
+    var desc = byId('edit-desc').value || '';
+    if (editMove) {
+      // ΜΣΤ1 — μεταφορά: αλλάζουν μόνο ποσό / ημερομηνία / σημείωση
+      var mday = byId('edit-date').value || item.entry_date || todayIso();
+      if (mday > todayIso()) mday = todayIso();
+      if (!keepAmt) {
+        if (item.amount === null) state.balance = null;
+        else {
+          var oldM = Number(item.amount);
+          state.balance = shift(state.balance, item.direction === 'out' ? (oldM - amt) : (amt - oldM));
+        }
+        item.amount = amt;
+      }
+      item.description = desc; item.entry_date = mday;
+      var mop = { uid: uid(), type: 'entry_edit', description: desc, entry_date: mday };
+      if (!keepAmt) mop.amount = amt;
+      if (String(editId).indexOf('tmp_') === 0) mop.ref_uid = String(editId).slice(4);
+      else mop.id = editId;
+      enqueue(mop);
+      saveState(); renderAll(); closeSheets(); trySync();
+      return;
+    }
     var catRaw = byId('edit-cat').value; var cat = catRaw ? Number(catRaw) : null;
     var biz = (document.querySelector('input[name=edit-biz]:checked') || {}).value === '1';
-    var desc = byId('edit-desc').value || '';
     var day = editWithdrawal ? null : (byId('edit-day').value || null);
     if (!keepAmt) {
       if (item.amount === null) state.balance = null;   // δεν ξέρουμε τη διαφορά → κρυμμένο
@@ -539,6 +590,9 @@
 
     byId('pay-save').addEventListener('click', addPay);
     byId('draw-save').addEventListener('click', addDraw);
+    byId('move-save').addEventListener('click', addMove);
+    var moveDay = byId('move-day');
+    if (moveDay) { moveDay.value = todayIso(); moveDay.max = todayIso(); }
     byId('count-save').addEventListener('click', saveCount);
     byId('edit-save').addEventListener('click', saveEdit);
 
