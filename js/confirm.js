@@ -75,7 +75,9 @@
     document.addEventListener('keydown', onKey);
   };
 
-  /* Αυτόματο intercept για forms με data-confirm */
+  /* Αυτόματο intercept για forms με data-confirm.
+     `data-confirm-safe` = η ενέργεια ΑΠΟΘΗΚΕΥΕΙ, δεν σβήνει → κουμπί «ναι» σε κανονικό χρώμα
+     αντί για κόκκινο (π.χ. αλλαγή ΦΠΑ που ξαναμετρά μήνες: προσοχή, όχι καταστροφή). */
   document.addEventListener('submit', function (e) {
     var form = e.target;
     if (!form.dataset.confirm) return;
@@ -86,7 +88,8 @@
       null,
       {
         title:    form.dataset.confirmTitle || 'Επιβεβαίωση',
-        yesLabel: form.dataset.confirmYes   || 'Επιβεβαίωση'
+        yesLabel: form.dataset.confirmYes   || 'Επιβεβαίωση',
+        dangerous: !('confirmSafe' in form.dataset)
       }
     );
   });
