@@ -422,7 +422,7 @@
     saveState(); renderAll(); closeSheets(); trySync();
   }
   function delEntry(e) {
-    window.showConfirm('Σβήσιμο αυτής της κίνησης (' + euro(e.amount) + ');', function () {
+    window.showConfirm('Διαγραφή αυτής της κίνησης (' + euro(e.amount) + ');', function () {
       state.balance = (e.amount === null) ? null
         : shift(state.balance, e.direction === 'in' ? -e.amount : e.amount);
       state.recent = (state.recent || []).filter(function (x) { return x.id !== e.id; });
@@ -434,7 +434,7 @@
       else op.id = e.id;
       enqueue(op);
       saveState(); renderAll(); trySync();
-    }, null, { title: 'Σβήσιμο', yesLabel: 'Σβήσιμο' });
+    }, null, { title: 'Διαγραφή', yesLabel: 'Διαγραφή' });
   }
 
   // ── sync ────────────────────────────────────────────────────────────────────

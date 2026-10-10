@@ -293,7 +293,7 @@
     // κάτω σειρά: [κενό] [0] [⌫]  (το δαχτυλικό έχει δική του όψη πλέον)
     html += '<span class="cbl-key ph"></span>';
     html += '<button type="button" class="cbl-key" data-k="0">0</button>';
-    html += '<button type="button" class="cbl-key bk" data-bk title="Σβήσιμο">⌫</button>';
+    html += '<button type="button" class="cbl-key bk" data-bk title="Διαγραφή">⌫</button>';
     padEl.innerHTML = html;
   }
 
